@@ -18,4 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('crawler', [CrawlController::class, 'crawler'])->name('crawler');
+Route::get('/crawler', [CrawlController::class, 'crawler'])->name('crawler');
