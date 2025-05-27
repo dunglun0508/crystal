@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +17,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/', [HomeController::class, 'dashboard'])->name('home.dashboard');
+
+//service 
+Route::get('/list-service', [HomeController::class, 'list'])->name('service.list');
+Route::get('{category}/{code}', [HomeController::class, 'index'])->name('service.index');

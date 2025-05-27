@@ -1,0 +1,733 @@
+
+@font-face {
+    font-family: 'SVN-Peristiwa';
+    src: url(/fonts/SVN-Peristiwa-Regular.woff2?b3f8e98a5c3dcb2375897eb6e2d64e82) format('woff2'),
+        url(/fonts/SVN-Peristiwa-Regular.woff?819cdb2a7813d7b90b5c495d02f75ce3) format('woff');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+.raleway{
+  font-family: "Raleway", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+#header{
+    background: url('/img/header.png');
+    background-size: cover;
+}
+#header .navbar .navbar-nav{
+    margin-right: 20px !important;
+}
+ .navbar .navbar-nav .nav-link{
+    font-family: "Raleway";
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    text-align: center;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+ .navbar .navbar-nav .nav-link.active,
+ .navbar .navbar-nav .nav-link:hover{
+    background: rgba(234, 239, 237, 1);
+    color: #2F5E4E;
+    border-radius: 20px;
+    font-weight: 700;
+}
+ .navbar .navbar-nav .nav-link:hover{
+     color: #2F5E4E;
+}
+.nav-item .nav-link.dropdown-toggle{
+    background-color: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #EAEFED;
+}
+.nav-item .nav-link.dropdown-toggle img{
+    margin-right: 10px;
+}
+.nav-item .nav-link.dropdown-toggle span{
+     margin-right: 15px;
+}
+.navbar .dropdown-toggle::after{
+    content: unset;
+}
+#header .btn-search{
+    width: 44px;
+    height: 44px;
+    background-color: #ffffff;
+    border: 1px solid #EAEFED;
+    margin-right: 20px;
+}
+#header .btn-search:hover{
+    background-color: #ebebeb !important;
+}
+.btn-booking-now{
+    font-family: "Raleway" ;
+    height: 44px;
+    padding-top: 10px;
+    padding-right: 20px;
+    padding-bottom: 10px;
+    padding-left: 20px;
+    border-radius: 20px;
+    background-color: #2F5E4E;
+    display: flex;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    vertical-align: middle;
+    color: #F5C566;
+    border-color: unset;
+}
+.btn-booking-now img{
+    margin-right: 10px;
+}
+.btn-booking-now:hover{
+    color: #F5C566;
+    background-color: #243d34;
+    border-color: unset;
+}
+
+#carouselId .carousel-caption{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 96px;
+    line-height: 100px;
+    background: unset;
+    position: absolute;
+    width: 906px;
+    height: 200px;
+    top: auto;
+    bottom: 110px;
+    left: auto;
+    right: 54px;
+    z-index: 1;
+}
+#carouselId  .carousel-item{
+    position: relative;
+    height: calc(100vh - 106px);
+    min-height: calc(100vh - 106px) !important;
+}
+#carouselId .carousel-overlay{
+    position: absolute;
+    right: 0px;
+    width: 100px;
+    height: calc(100vh - 106px);
+    width: 823px;
+    background: linear-gradient(90deg, rgba(47, 94, 78, 0) 0%, #2F5E4E 100%);
+
+}
+
+.about{
+    background: #EAEFED;
+    overflow: hidden;
+
+}
+.about .img-about-top{
+    background-image: url(/images/about-1.png?9e34e33b090b6327845d6823dd29a984);
+    width: 571px;
+    height: 450px;
+    top: 100px;
+    left: 254px;
+    background-size: cover;
+
+    background-position: bottom;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 150px;
+    border-bottom-right-radius: 20px;
+    border-bottom-left-radius: 150px;
+}
+.about .img-about-bottom{
+    background-image: url(/images/about-2.png?ed779228c6124e41e675dd9b3cb15c90);
+    width: 330px;
+    height: 330px;
+    top: 250px;
+    right: 0px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 200px;
+}
+.about .title-about-us{
+    font-family: SVN-Peristiwa;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 128px;
+    line-height: 100%;
+    vertical-align: middle;
+    color: #BFCDC8;
+    margin-left: -60px;
+}
+.about .content-about-us{
+    padding-left: 125px;
+}
+.about .content-about-us h3{
+    font-family: "Lora";
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 40px;
+    color: #2F5E4E;
+    margin-bottom: 54px;
+}
+.about .content-about-us .content{
+    font-family: "Raleway";
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 30px;
+    color: #363636;
+    margin-bottom: 90px;
+}
+.bottom-about{
+    display: flex;
+    padding-left: 125px;
+}
+.btn-view-more{
+    background: #BFCDC880;
+    color: #2F5E4E;
+    border:0px;
+}
+.btn-view-more:hover{
+    background-color: #bfc5c380;
+    color: #2F5E4E;
+}
+.about .btn-view-more{
+    margin-right: 50px;
+}
+#about .container{
+    position: relative;
+}
+#about .img-leaf-2{
+     top: -87px;
+     transform: rotateY(180deg);
+     opacity: 0.5;
+     left: -44px;
+}
+#about .img-leaf-1{
+    top: 150px;
+    left: calc(50% - 100px);
+    opacity: 0.5;
+    width: 197px;
+    height: 160px;
+
+}
+#about .img-leaf-3{
+    width: 372px;
+    height: 423px;
+
+    top: -3rem;
+    right: -512px;
+    opacity: 0.5;
+}
+
+.title-service .header-title{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 32px;
+    color: #F2B640;
+
+}
+.title-service .content-title-service{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 50px;
+    line-height: 60px;
+    color: #2F5E4E ;
+    position: relative;
+    display: inline;
+}
+.title-service .content-title{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color: #707070;
+
+}
+.service-item{
+    padding: 10px;
+    border-radius: 20px;
+}
+.services .service-item:hover{
+    background-color: #fafcf6;
+}
+.services .service-item:hover .title-item{
+    color:#2F5E4E;
+}
+.services .service-item:hover .view-more{
+    background-color: #bfcdc8;
+}
+.img-service{
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-height: 150px;
+    margin-bottom: 15px;
+}
+.service-item .title-item{
+    text-align: center;
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 32px;
+    text-align: center;
+    color: #2A2A2A;
+    margin-bottom: 20px;
+}
+.service-item .content-item{
+    text-align: center;
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    text-align: center;
+    color:#363636;
+    margin-bottom: 16px;
+}
+.service-item .footer-item{
+    text-align:center;
+    margin-bottom: 16px;
+}
+.view-more{
+    width: 155px;
+    height: 48px;
+    border-radius: 20px;
+    padding-top: 12px;
+    padding-right: 20px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+    font-family: Raleway;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 20px;
+    vertical-align: middle;
+    color:#2F5E4E;
+}
+.view-more img{
+    margin-left: 10px;
+}
+.view-more:hover{
+    color:#2F5E4E;
+}
+.row-service{
+    margin-bottom: 133px;
+}
+.left-booking{
+    background-color:#2F5E4E;
+    border-top-left-radius: 50px;
+    border-bottom-left-radius: 50px;
+}
+.left-booking .appointment-form{
+    padding:120px;
+    padding-top: 63px;
+    padding-bottom: 66px;
+}
+.left-booking .appointment-form h1{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 50px;
+    line-height: 60px;
+    margin-bottom: 48px;
+}
+.right-booking{
+    border-top-right-radius: 50px;
+    border-bottom-right-radius: 50px;
+    background-position: center;
+    background-size: cover;
+}
+.left-booking .col-lg-6 .form-control{
+    background: #597E71;
+    min-height: 44px;
+    border-width: 1.5px;
+    padding: 14px;
+    gap: 8px;
+    border-radius: 20px;
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    border: 0px;
+    color:#9FB5AE !important;
+}
+.left-booking .col-lg-6  .form-control::-moz-placeholder{
+    color:#9FB5AE !important;
+}
+.left-booking .col-lg-6  .form-control::placeholder{
+    color:#9FB5AE !important;
+}
+.left-booking .col-lg-6  .form-control:focus{
+    border: 0px;
+    box-shadow: unset;
+}
+.left-booking  .btn-book-now{
+    border-radius: 24px;
+    padding-top: 16px;
+    padding-right: 32px;
+    padding-bottom: 16px;
+    padding-left: 32px;
+    background: #F5C566;
+    color:#2F5E4E;
+    font-family: Raleway;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 28px;
+    vertical-align: middle;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.left-booking  .btn-book-now:hover{
+    background-color: #e7af40;
+}
+
+.left-booking  .btn-book-now img{
+    margin-right: 10px;
+}
+.testimonial{
+    background-image: url(/images/testimonial.png?c7fb2052b8f92bb510f06764a8a461f9) !important;
+    background-color: rgba(234, 239, 237, 0.4);
+    background-blend-mode: multiply;
+    background-position: center;
+    background-repeat: repeat;
+    background-size: 40%;
+}
+
+.testimonial-carousel .customer-nav{
+    display: flex;
+    width: 48px;
+    height: 48px;
+    border-radius: 20px;
+    padding: 12px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: rgba(191, 205, 200, 1);
+
+}
+.testimonial-carousel .custom-prev{
+    background-image: url(/images/arrow-left.svg?1110dbc41bdf67e3b9da234b3c294530) !important;
+}
+.testimonial-carousel .custom-next{
+    background-image: url(/images/arrow-right.svg?fca32d871fdba5947f813936c430dfae) !important;
+}
+.testimonial .owl-carousel.testimonial-carousel .owl-nav .owl-prev{
+    margin-right: 24px;
+}
+.testimonial .owl-carousel.testimonial-carousel .owl-nav{
+    position: unset;
+    margin-top: 60px;
+
+}
+.testimonial .testimonial-item{
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0px 6px 30px 0px rgba(47, 94, 78, 0.12);
+}
+.testimonial .name-testimonial{
+    font-family: Raleway;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 24px;
+    color: rgba(47, 94, 78, 1);
+    margin-bottom: 6px;
+}
+.testimonial .address-testimonial{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color:rgba(54, 54, 54, 1);
+    margin-bottom: 20px;
+}
+.testimonial .content-testimonial{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 30px;
+    color:rgba(54, 54, 54, 1);
+}
+.testimonial .img-testimonial-1{
+    background-image: url(/images/testimonial-1.png?2313369547682daaae5a1f00f21a3553);
+    width: 450px;
+    height: 450px;
+    border-radius: 300px;
+    background-size: 120%;
+    background-position: -37px -208px;
+    position: absolute;
+    right: 0px;
+}
+.testimonial .img-testimonial-1 .leaf-img{
+    position: absolute;
+}
+.testimonial .img-testimonial-1  .leaf-img-1{
+    width: 163px;
+    height: 132px;
+    transform: rotateY(180deg);
+}
+.testimonial .img-testimonial-1  .leaf-img-2{
+   width: 175px;
+   height: 194px;
+   left: 95px;
+   bottom: -31px;
+   -o-object-fit: fill;
+      object-fit: fill;
+       z-index: 1;
+}
+.testimonial .img-testimonial-2{
+   background-image: url(/images/testimonial-2.png?60ce35c54f5673feff25ef4300e3a9a6);
+   width: 256px;
+   height: 256px;
+   border-radius: 300px;
+   border-width: 10px;
+   background-size: cover;
+   background-position: center;
+   position: absolute;
+   bottom: 0px;
+    left: 100px;
+    border: 10px solid rgba(255, 255, 255, 0.8);
+
+}
+.testimonial .img-testimonial-2 img{
+    position: absolute;
+    width: 150px;
+    height: 157px;
+    transform: rotate(-33.14deg);
+    left: -65px;
+    bottom: 0px;
+
+}
+.right-testimonial{
+    position: relative;
+    padding-top: 50px;
+}
+.blog-item{
+    border-radius: 24px;
+    box-shadow: 0px 6px 30px 0px rgba(47, 94, 78, 0.12);
+
+}
+.blog-img{
+    height: 300px;
+    background-color: rgba(252, 203, 196, 1);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    background-size: cover;
+    background-position: center;
+}
+.blog-content{
+    padding: 20px;
+
+}
+.title-blog{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 24px;
+    color:rgba(42, 42, 42, 1);
+    position: relative;
+    margin-bottom: 15px;
+}  
+
+.title-blog .underline-title{
+    width: 35px;
+    bottom:-15px;
+    left: 0px;
+}
+.underline-title{
+    background: rgba(242, 182, 64, 1);
+    position: absolute;
+    height: 2px;
+}
+.content-blog{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color:rgba(54, 54, 54, 1);
+    padding-top: 15px;
+    margin-bottom: 15px;
+}
+.blog-item .view-more{
+    padding-left: 0px;
+}
+.footer{
+    background: rgba(234, 239, 237, 1);
+}
+.footer .footer-item-title{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 60px;
+    text-align: center;
+    color:rgba(47, 94, 78, 1);
+    margin-bottom: 50px;
+}   
+.footer .footer-content{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px !important;
+    line-height: 24px !important;
+    text-align: center;
+    color:rgba(54, 54, 54, 1) !important;
+    margin-bottom: 5px;
+}
+.list-social a{
+    margin-right: 24px;
+}
+.list-social a:last-child{
+    margin-right:0px;
+}
+.copyright{
+    background: rgba(191, 205, 200, 1) !important;
+    padding:10px;
+    text-align: center;
+}
+.content-copyright{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    text-align: center;
+
+}
+.back-to-top{
+    background: rgba(234, 239, 237, 1);
+    
+}
+.back-to-top:hover{
+    background: rgb(192 211 203) !important;
+}
+.back-to-top i{
+    color: #2F5E4E;
+}
+.container-breadcrumb{
+    background: rgba(247, 248, 242, 1);
+    position: relative;
+    overflow: hidden;
+
+}
+.breadcrumb-list{
+    margin-left: auto;
+    align-items: center;
+}
+.breadcrumb-list img{
+    width: 24px;
+    height: 24px;
+
+}
+#bg-breadcrumb-left{
+   position: absolute;
+    width: 389px;
+    height: 540px;
+    top: -5px;
+    left: -12px;
+    opacity: 0.1;
+    -o-object-fit: cover;
+       object-fit: cover;
+    -o-object-position: 0px -100px;
+       object-position: 0px -100px;
+}
+#bg-breadcrumb-right{
+    position: absolute;
+    width: 441px;
+    height: 540px;
+    top: 0px;
+    right: 0px;
+    opacity: 0.1;
+    -o-object-fit: cover;
+       object-fit: cover;
+    -o-object-position: -372px -50px;
+       object-position: -372px -50px;
+}
+.breadcrumb-item:before{
+    content: '/';
+    margin-left:10px;
+    margin-right: 10px;
+}
+.breadcrumb-item a{
+ font-family: Lora;
+ font-weight: 700;
+ font-size: 16px;
+ line-height: 24px;
+ color: rgba(47, 94, 78, 1);   
+
+}
+.breadcrumb-item.active a{
+     color:rgba(42, 42, 42, 1);
+     font-weight: 400;
+}
+.title-breadcrumb{
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 50px;
+    line-height: 60px;
+    color: rgba(47, 94, 78, 1);
+    margin-top: 80px;
+    margin-bottom: 80px;
+    z-index: 1;
+}
+.content-title-service .icon-title{
+    position: absolute;
+    top: 13px;
+
+}
+.content-title-service .icon-title-left{
+    left: -40px;
+}
+.content-title-service .icon-title-right{
+    right: -40px;
+}
+.content-title-service .underline-title{
+     width: 95px;
+     height: 4px;
+     bottom: -20px;
+     left: calc(50% - 48px);
+}
+.container-service .service-img{
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-top-left-radius: 24px;
+    border-bottom-left-radius: 24px;
+}
+.container-service .service-item .col-lg-6{
+    padding: 0px;
+}
+.container-service .service-item{
+    box-shadow: 0px 6px 30px 0px rgba(47, 94, 78, 0.12);
+    padding: 0px;
+    border-radius: 24px;
+    margin:15px;
+}
+.service-item .view-more{
+    padding-left: 0px;
+}
+.service-item .blog-content{
+    min-height: 300px;
+    background-color: #fff;
+    border-top-right-radius: 24px;
+    border-bottom-right-radius: 24px;
+}
+#partial-massage,
+#packages-massage{
+    background: rgba(234, 239, 237, 1);
+
+}
+.note-item{
+    width: 20%;
+}
+.note-item .note-img{
+    background-position: center;
+    background-size: 72px;
+    min-height: 100px;
+    background-repeat: no-repeat;
+}
+.note-content{
+    font-family: Raleway;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: rgba(0, 0, 0, 1);
+    width: 168px;
+    margin: auto;
+}
