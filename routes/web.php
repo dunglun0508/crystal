@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\BlogsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,13 +15,9 @@ use App\Http\Controllers\HomeController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-
-Route::get('/', function () {
-    return view('welcome');
-});
-
 Route::get('/', [HomeController::class, 'dashboard'])->name('home.dashboard');
 
 //service 
-Route::get('/list-service', [HomeController::class, 'list'])->name('service.list');
-Route::get('{category}/{code}', [HomeController::class, 'index'])->name('service.index');
+Route::get('/list-service', [ServiceController::class, 'index'])->name('service.index');
+Route::get('/{category}/{code}', [ServiceController::class, 'detail'])->name('service.detail');
+Route::get('/blogs-news', [BlogsController::class, 'index'])->name('blogs.index');

@@ -15,12 +15,4 @@ class HomeController extends Controller
         // $listProductNewUpdate = Product::where('is_show','=',1)->orderby('created_at','desc')->limit(10)->get();
         return view('home.dashboard');
     }
-     public function list(){
-        $titlePage = 'Our service';
-        return view('service/list',compact('titlePage'));
-    }
-    public function index(Request $request,$code){
-        $titlePage = 'Our service';
-        return view('service/index',compact('titlePage'));
-    }
 }

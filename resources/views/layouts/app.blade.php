@@ -118,11 +118,13 @@
         ?>
         <div class="container-fluid container-breadcrumb">
             <div class="container d-flex" >
-                <div class="title-breadcrumb">Our service</div>
+                <div class="title-breadcrumb">{{$titlePage}}</div>
                 <div class="breadcrumb-list d-flex">
                     <img src="{{asset('img/home.svg')}}" alt=""> 
                     <ol class="breadcrumb justify-content-center mb-0">
-                        <li class="breadcrumb-item active"><a href="index.html">{{$titlePage}}</a></li>
+                        @foreach($breadcrumb as $item => $url)
+                            <li class="breadcrumb-item {{ $loop->last ? 'active' : '' }}"><a href="{{ $url }}">{{$item}}</a></li>
+                        @endforeach
                     </ol>
                 </div>
                 
