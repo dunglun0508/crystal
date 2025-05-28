@@ -62,8 +62,7 @@
                     </div>
                 </div>
                 <button class="book-btn mt-4 d-flex align-items-center justify-content-center"><img
-                        src="{{ asset('img/calendar.svg') }}" class="icon-title icon-title-left" alt=""> Book
-                    now</button>
+                        src="{{ asset('img/calendar.svg') }}" class="icon-title icon-title-left" alt=""> Book now</button>
             </div>
         </div>
         <div class="container-service mt-4">

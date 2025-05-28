@@ -1074,3 +1074,200 @@
 .pagination .page-item.dots {
     cursor: default;
 }
+
+.blogs-detail-title {
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 40px;
+    color: #363636;
+}
+.blogs-detail-content p{
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color: #363636;
+}
+.blogs-detail-image{
+    border-radius: 24px;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.about-us-title {
+    font-family: Lora;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 40px;
+    color: #363636;
+}
+.about-us-content, .about-us-benefits {
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color: #363636;
+}
+.booking-container input, .booking-container select{
+    height: 48px;
+    width: 100%;
+    border-radius: 20px;
+    padding: 14px;
+    background-color: rgba(234, 239, 237, 0.5);
+    border: 1.5px solid #EAEFED;
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 20px;
+    color: #363636;
+}
+.booking-container .select-container {
+    position: relative;
+}
+.booking-container select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+.booking-container .select-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+}
+
+.booking-container .table {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.booking-container .table thead tr {
+    background: #F5F7F6;
+    position: relative;
+}
+
+.booking-container .table thead tr th {
+    text-align: left;
+    padding: 14px;
+    font-family: Raleway;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 20px;
+    color: #707070;
+}
+.booking-container .table thead tr th:not(:last-child) {
+    border-right: 1px solid #E7E7E7 !important;
+}
+.booking-container .table thead tr th:not(:first-child) {
+    text-align: right;
+}
+.booking-container .table thead tr th:first-child {
+    text-align: left;
+}
+
+.booking-container .table tbody tr {
+    position: relative;
+    background: #FFFFFF;
+}
+
+.booking-container .table tbody tr:hover {
+    background: #F9F9F9;
+}
+
+.booking-container .table tbody tr td {
+    padding: 15px;
+    vertical-align: middle;
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 20px;
+    text-align: right;
+    color: #363636;
+}
+.booking-container .table tbody tr td:not(:last-child) {
+    border-right: 1px solid #E7E7E7 !important;
+}
+.booking-container .table tbody tr td:first-child {
+    text-align: left;
+    font-family: Raleway;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 20px;
+    color: #363636;
+}
+
+.booking-container .table tbody tr:last-child td:last-child {
+    font-family: Raleway;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 24px;
+    color: #F24040;
+}
+
+.booking-container .table thead tr::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-left: 1px solid #E7E7E7;
+    border-right: 1px solid #E7E7E7;
+    border-top: 1px solid #E7E7E7;
+    border-radius: 10px 10px 0 0;
+    pointer-events: none;
+}
+
+.booking-container .table tbody tr:last-child::after {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.booking-container .table tbody tr::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-left: 1px solid #E7E7E7;
+    border-right: 1px solid #E7E7E7;
+    border-bottom: 1px solid #E7E7E7;
+    pointer-events: none;
+}
+.booking-container .table>:not(:last-child)>:last-child>* {
+    border: none;
+}
+.booking-container .quantity-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    height: 50px;
+    border-radius: 20px;
+    padding: 10px;
+    border: 1.5px solid #EAEFED;
+    background-color: rgba(234, 239, 237, 0.5);
+    width: -moz-max-content;
+    width: max-content;
+    margin: auto;
+}
+.booking-container .quantity-control span{
+    min-width: 50px;
+    width: auto;
+}
+.booking-container .quantity-control .btn-quantity {
+    width: 24px;
+    height: 24px;
+}
+.booking-container .book-btn {
+    margin: 0;
+}
+body .w-auto {
+    width: auto !important;
+}
