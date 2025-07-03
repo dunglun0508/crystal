@@ -13,6 +13,12 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        
+        // Daily crawl at 00:15 Vietnam time
+        $schedule->job(new \App\Jobs\DispatchCrawlJobs())
+                ->dailyAt('00:20')
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->withoutOverlapping();
     }
 
     /**

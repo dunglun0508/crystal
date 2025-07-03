@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'sync'),
+    'default' => env('QUEUE_CONNECTION', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -38,7 +38,39 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            'retry_after' => 1200,
+            'after_commit' => false,
+        ],
+
+        'all' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'all',
+            'retry_after' => 1200,
+            'after_commit' => false,
+        ],
+
+        'categories' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'categories',
+            'retry_after' => 600,
+            'after_commit' => false,
+        ],
+
+        'products' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'products',
+            'retry_after' => 1200,
+            'after_commit' => false,
+        ],
+
+        'details' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'details',
+            'retry_after' => 900,
             'after_commit' => false,
         ],
 
