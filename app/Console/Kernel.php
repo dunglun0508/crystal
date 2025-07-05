@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         
-        // Daily crawl at 00:15 Vietnam time
+        // Crawl hàng ngày lúc 00:15 giờ Việt Nam
         $schedule->job(new \App\Jobs\DispatchCrawlJobs())
                 ->dailyAt('00:20')
                 ->timezone('Asia/Ho_Chi_Minh')

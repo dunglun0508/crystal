@@ -9,7 +9,7 @@ class ProductDetail extends Model
 {
     use HasFactory;
     
-    // Sử dụng code làm khóa chính thay vì id
+    // Sử dụng slug làm khóa chính thay vì id
     protected $primaryKey = 'code';
     public $incrementing = false;
     protected $keyType = 'string';

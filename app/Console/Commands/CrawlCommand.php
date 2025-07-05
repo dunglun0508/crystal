@@ -10,11 +10,12 @@ use App\Jobs\CrawlProductDetailsAndVariantsJob;
 use App\Jobs\CrawlCategoriesJob;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Support\Facades\Log;
 
 class CrawlCommand extends Command
 {
     protected $signature = 'crawl:run {type? : Type of crawl (all, categories, level3, level2, details)} {--category= : Specific category code}';
-    protected $description = 'Run crawl jobs for categories, products, and product details';
+    protected $description = 'Run crawl jobs for categories, products, and product details. Use crawl:retry-failed to retry failed crawls, crawl:failed-stats to see statistics.';
 
     public function handle()
     {
@@ -40,6 +41,7 @@ class CrawlCommand extends Command
                     break;
 
                 case 'level3':
+                    Log::info("=== LEVEL 3 PRODUCTS CRAWL START ===");
                     if ($categoryCode) {
                         $category = Category::where('code', $categoryCode)->where('level', '3')->first();
                         if (!$category) {
@@ -48,18 +50,19 @@ class CrawlCommand extends Command
                         }
                         $level3Job = new CrawlLevel3ProductsJob($category->code, $category->slug);
                         $level3Job->handle();
-                        $this->info("Level 3 product crawl job completed for category: {$categoryCode}");
                     } else {
                         $level3Categories = Category::where('level', '3')->get();
                         foreach ($level3Categories as $category) {
                             $level3Job = new CrawlLevel3ProductsJob($category->code, $category->slug);
                             $level3Job->handle();
-                            $this->info("Level 3 product crawl job completed for category: {$category->code}");
                         }
                     }
+                    $this->info('Product for category level 3 crawl jobs completed successfully!');
+                    Log::info("=== LEVEL 3 PRODUCTS CRAWL COMPLETE ===");
                     break;
 
                 case 'level2':
+                    Log::info("=== LEVEL 2 PRODUCTS CRAWL START ===");
                     if ($categoryCode) {
                         $category = Category::where('code', $categoryCode)->where('level', '2')->first();
                         if (!$category) {
@@ -68,32 +71,40 @@ class CrawlCommand extends Command
                         }
                         $level2Job = new CrawlLevel2ProductsJob($category->code, $category->slug);
                         $level2Job->handle();
-                        $this->info("Level 2 product crawl job completed for category: {$categoryCode}");
                     } else {
-                        $level2Categories = Category::where('level', '2')->get();
+                        // Chỉ lấy các category level 2 mà không có category con level 3
+                        $level2Categories = Category::where('level', '2')
+                            ->whereNotIn('code', function($query) {
+                                $query->select('parent_code')
+                                      ->from('categories')
+                                      ->where('level', '3')
+                                      ->whereNotNull('parent_code');
+                            })
+                            ->get();
                         foreach ($level2Categories as $category) {
                             $level2Job = new CrawlLevel2ProductsJob($category->code, $category->slug);
                             $level2Job->handle();
-                            $this->info("Level 2 product crawl job completed for category: {$category->code}");
                         }
                     }
+                    $this->info('Product for category level 2 crawl jobs completed successfully!');
+                    Log::info("=== LEVEL 2 PRODUCTS CRAWL COMPLETE ===");
                     break;
 
                 case 'details':
-                    $products = Product::select('slug', 'code')
-                        ->whereNull('indicators')
-                        ->orWhere('indicators', '')
+                    Log::info("=== PRODUCT DETAILS AND VARIANTS CRAWL START ===");
+                    $products = Product::select('slug')
+                        ->distinct('slug')
                         ->orderByRaw('CASE WHEN category_code IN (SELECT code FROM categories WHERE level = 3) THEN 0 ELSE 1 END')
-                        ->orderBy('code')
-                        ->get()
-                        ->unique('slug');
+                        ->orderBy('slug')
+                        ->get();
                     
                     foreach ($products as $product) {
-                        $detailsJob = new CrawlProductDetailsAndVariantsJob($product->slug, $product->code);
+                        $detailsJob = new CrawlProductDetailsAndVariantsJob($product->slug);
                         $detailsJob->handle();
                     }
+                    $this->info('Product details crawl jobs completed successfully!');
+                    Log::info("=== PRODUCT DETAILS AND VARIANTS CRAWL COMPLETE ===");
                     break;
-
                 default:
                     $this->error("Unknown crawl type: {$type}");
                     $this->info("Available types: all, categories, level3, level2, details");

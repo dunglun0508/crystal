@@ -21,6 +21,8 @@ return new class extends Migration
             $table->text('specs')->nullable();
             $table->text('key_features')->nullable();
             $table->timestamps();
+            
+            $table->foreign('code')->references('slug')->on('products')->onDelete('cascade');
         });
     }
 

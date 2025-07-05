@@ -20,12 +20,12 @@ class CrawlLevel3ProductsJob implements ShouldQueue
     protected $categorySlug;
     
     public $tries = 5;
-    public $timeout = 600;
-    public $backoff = [60, 120, 300, 600];
+    public $timeout = 300;
+    public $backoff = [15, 30, 60, 120, 300]; // Tăng dần thời gian chờ giữa các retry
     public $maxExceptions = 3;
 
     /**
-     * Create a new job instance.
+     * Tạo một instance job mới.
      */
     public function __construct($categoryCode, $categorySlug)
     {
@@ -35,16 +35,25 @@ class CrawlLevel3ProductsJob implements ShouldQueue
     }
 
     /**
-     * Execute the job.
+     * Thực thi job.
      */
     public function handle(): void
     {
         try {
-            Log::info("CrawlLevel3ProductsJob: Starting for category ({$this->categoryCode})");
+            // Thêm delay ngẫu nhiên để tránh bị block (1-2 giây)
+            sleep(rand(1, 2));
             
             $crawlController = new CrawlController();
             $baseUrl = 'https://www.artcrystal.eu';
-            $products = $crawlController->crawlProductsByCategorySlug($baseUrl . $this->categorySlug, $this->categoryCode);
+            $fullUrl = $baseUrl . $this->categorySlug;
+            
+            // Kiểm tra URL có thể truy cập trước khi crawl
+            if (!$crawlController->checkUrlAccessibility($fullUrl, 30)) {
+                Log::warning("CrawlLevel3ProductsJob: URL not accessible - {$fullUrl}");
+                return; // Bỏ qua category này
+            }
+            
+            $products = $crawlController->crawlProductsByCategorySlug($fullUrl, $this->categoryCode);
             
             $currentProducts = Product::where('category_code', $this->categoryCode)->get()->keyBy('code');
             
@@ -56,11 +65,11 @@ class CrawlLevel3ProductsJob implements ShouldQueue
                 $key = $product['code'];
                 $product['category_code'] = $this->categoryCode;
                 
-                // Clean all data fields to prevent database errors
+                // Làm sạch tất cả các trường dữ liệu để tránh lỗi database
                 $product['price'] = (isset($product['price']) && $product['price'] !== '' && $product['price'] !== null) ? $product['price'] : null;
                 $product['currency'] = (isset($product['currency']) && $product['currency'] !== '' && $product['currency'] !== null) ? $product['currency'] : null;
                 $product['discount'] = (isset($product['discount']) && $product['discount'] !== '' && $product['discount'] !== null) ? $product['discount'] : null;
-                $product['image'] = (isset($product['image']) && $product['image'] !== '' && $product['image'] !== null) ? $product['image'] : 'default-product.jpg';
+                $product['image'] = $product['image'] ?? '';
                 $product['title'] = (isset($product['title']) && $product['title'] !== '' && $product['title'] !== null) ? $product['title'] : 'No Title';
                 
                 if (!isset($currentProducts[$key])) {
@@ -79,21 +88,25 @@ class CrawlLevel3ProductsJob implements ShouldQueue
                 return !in_array($prod->code, $productCodes);
             })->pluck('id');
             
-            // Delete products no longer present
+            // Xóa các sản phẩm không còn tồn tại
             $deletedCount = 0;
             if ($toDelete->count() > 0) {
                 $deletedCount = Product::whereIn('id', $toDelete)->delete();
             }
             
-            // Upsert products
+            // Thêm mới hoặc cập nhật sản phẩm
             $upsertedCount = 0;
             if (count($toUpsert) > 0) {
                 foreach ($toUpsert as $product) {
                     try {
-                        Product::updateOrCreate(
-                            ['code' => $product['code']],
-                            $product
-                        );
+                        $existing = Product::where('code', $product['code'])->first();
+                        if ($existing) {
+                            $updateData = $product;
+                            unset($updateData['slug']);
+                            $existing->update($updateData);
+                        } else {
+                            Product::create($product);
+                        }
                         $upsertedCount++;
                     } catch (\Exception $e) {
                         Log::error("CrawlLevel3ProductsJob: Error upserting product {$product['code']}: " . $e->getMessage());
@@ -105,12 +118,49 @@ class CrawlLevel3ProductsJob implements ShouldQueue
             Log::info("CrawlLevel3ProductsJob: {$this->categorySlug} | Crawled: " . count($products) . " | DB: " . $currentProducts->count() . " | Add: " . count($toAdd) . " | Update: " . count($toUpdate) . " | Delete: " . $deletedCount . " | Total: {$upsertedCount}");
             
         } catch (\Exception $e) {
-            Log::error("CrawlLevel3ProductsJob: Failed for category {$this->categoryCode} ({$this->categorySlug}): " . $e->getMessage());
+            $errorMessage = $e->getMessage();
+            
+            // Kiểm tra có phải lỗi tạm thời không (HTTP errors, SSL, lỗi mạng, timeout)
+            if (strpos($errorMessage, 'HTTP request failed') !== false ||
+                strpos($errorMessage, 'HTTP/1.1 500') !== false ||
+                strpos($errorMessage, 'HTTP/1.1 502') !== false ||
+                strpos($errorMessage, 'HTTP/1.1 503') !== false ||
+                strpos($errorMessage, 'HTTP/1.1 504') !== false ||
+                strpos($errorMessage, 'SSL: Handshake timed out') !== false ||
+                strpos($errorMessage, 'Connection timed out') !== false ||
+                strpos($errorMessage, 'Failed to open stream') !== false ||
+                strpos($errorMessage, 'get_headers') !== false ||
+                strpos($errorMessage, 'timeout') !== false ||
+                strpos($errorMessage, 'timed out') !== false) {
+                
+                Log::warning("CrawlLevel3ProductsJob: Temporary error for category {$this->categoryCode} ({$this->categorySlug}) (attempt {$this->attempts()}): " . $errorMessage);
+                
+                // Ghi lại lỗi vào bảng failed_crawls nếu đã hết số lần retry
+                if ($this->attempts() >= $this->tries) {
+                    \App\Models\FailedCrawl::updateOrCreate(
+                        [
+                            'type' => 'category_level3',
+                            'identifier' => $this->categoryCode
+                        ],
+                        [
+                            'error' => $errorMessage,
+                            'attempts' => \DB::raw('attempts + 1'),
+                            'last_attempt_at' => now()
+                        ]
+                    );
+                    Log::error("CrawlLevel3ProductsJob: Permanently failed for category {$this->categoryCode}, added to failed_crawls table");
+                }
+                
+                // Để Laravel xử lý retry với $tries và $backoff
+                throw $e;
+            }
+            
+            Log::error("CrawlLevel3ProductsJob: Failed for category {$this->categoryCode} ({$this->categorySlug}): " . $errorMessage);
         }
     }
     
     /**
-     * Handle a job failure.
+     * Xử lý khi job thất bại.
      */
     public function failed(\Throwable $exception): void
     {
@@ -123,27 +173,5 @@ class CrawlLevel3ProductsJob implements ShouldQueue
         ]);
     }
     
-    /**
-     * Get the number of times the job may be attempted.
-     */
-    public function retries()
-    {
-        return 5;
-    }
-    
-    /**
-     * Calculate the number of seconds to wait before retrying the job.
-     */
-    public function backoff()
-    {
-        return [60, 120, 300, 600];
-    }
-    
-    /**
-     * Determine the time at which the job should timeout.
-     */
-    public function retryAfter()
-    {
-        return 600;
-    }
+
 }

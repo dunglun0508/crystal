@@ -17,6 +17,7 @@ class Product extends Model
         'currency',
         'slug',
         'discount',
+        'indicators',
         'category_code'
     ];
 
@@ -32,6 +33,6 @@ class Product extends Model
 
     public function variants()
     {
-        return $this->hasMany(ProductVariant::class, 'product_code', 'code');
+        return $this->hasMany(ProductVariant::class, 'code', 'slug');
     }
 }

@@ -47,7 +47,9 @@ class RetryFailedJobs extends Command
             try {
                 $this->call('queue:retry', ['id' => $job->id]);
                 $retriedCount++;
-                $this->line("Retried job ID: {$job->id}");
+                // Xóa job khỏi failed_jobs sau khi retry thành công
+                DB::table('failed_jobs')->where('id', $job->id)->delete();
+                $this->line("Retried and removed job ID: {$job->id}");
             } catch (\Exception $e) {
                 $this->warn("Could not retry job ID {$job->id}, attempting to recreate...");
                 
@@ -56,7 +58,7 @@ class RetryFailedJobs extends Command
                     $jobData = $payload['data']['command'];
                     $jobClass = $payload['displayName'] ?? '';
                     
-                    // Recreate based on job class
+                    // Tạo lại dựa trên class job
                     if ($this->recreateJob($jobClass, $jobData)) {
                         $recreatedCount++;
                         DB::table('failed_jobs')->where('id', $job->id)->delete();
@@ -101,11 +103,8 @@ class RetryFailedJobs extends Command
 
             case 'App\Jobs\CrawlProductDetailsAndVariantsJob':
                 if (preg_match('/productSlug":"([^"]+)"/', $jobData, $matches1)) {
-                    $productCode = null;
-                    if (preg_match('/productCode":"([^"]+)"/', $jobData, $matches2)) {
-                        $productCode = $matches2[1];
-                    }
-                    CrawlProductDetailsAndVariantsJob::dispatch($matches1[1], $productCode);
+                    // Chỉ cần productSlug, không cần productCode nữa
+                    CrawlProductDetailsAndVariantsJob::dispatch($matches1[1]);
                     return true;
                 }
                 break;
