@@ -27,17 +27,15 @@ class CrawlCommand extends Command
         try {
             switch ($type) {
                 case 'all':
-                    $this->info('Running all crawl jobs...');
-                    $dispatchJob = new DispatchCrawlJobs();
-                    $dispatchJob->handle();
-                    $this->info('All crawl jobs completed successfully!');
+                    $this->info('Dispatching all crawl jobs to queue...');
+                    DispatchCrawlJobs::dispatch();
+                    $this->info('All crawl jobs dispatched to queue successfully!');
                     break;
 
                 case 'categories':
-                    $this->info('Running category crawl jobs...');
-                    $categoryJob = new CrawlCategoriesJob();
-                    $categoryJob->handle();
-                    $this->info('Category crawl jobs completed successfully!');
+                    $this->info('Dispatching category crawl jobs to queue...');
+                    CrawlCategoriesJob::dispatch();
+                    $this->info('Category crawl jobs dispatched to queue successfully!');
                     break;
 
                 case 'level3':
@@ -48,17 +46,16 @@ class CrawlCommand extends Command
                             $this->error("Category {$categoryCode} not found or not level 3");
                             return 1;
                         }
-                        $level3Job = new CrawlLevel3ProductsJob($category->code, $category->slug);
-                        $level3Job->handle();
+                        CrawlLevel3ProductsJob::dispatch($category->code, $category->slug);
+                        $this->info("Level 3 job dispatched for category: {$categoryCode}");
                     } else {
                         $level3Categories = Category::where('level', '3')->get();
                         foreach ($level3Categories as $category) {
-                            $level3Job = new CrawlLevel3ProductsJob($category->code, $category->slug);
-                            $level3Job->handle();
+                            CrawlLevel3ProductsJob::dispatch($category->code, $category->slug);
                         }
+                        $this->info("Dispatched {$level3Categories->count()} level 3 jobs to queue");
                     }
-                    $this->info('Product for category level 3 crawl jobs completed successfully!');
-                    Log::info("=== LEVEL 3 PRODUCTS CRAWL COMPLETE ===");
+                    Log::info("=== LEVEL 3 PRODUCTS CRAWL DISPATCHED ===");
                     break;
 
                 case 'level2':
@@ -69,8 +66,8 @@ class CrawlCommand extends Command
                             $this->error("Category {$categoryCode} not found or not level 2");
                             return 1;
                         }
-                        $level2Job = new CrawlLevel2ProductsJob($category->code, $category->slug);
-                        $level2Job->handle();
+                        CrawlLevel2ProductsJob::dispatch($category->code, $category->slug);
+                        $this->info("Level 2 job dispatched for category: {$categoryCode}");
                     } else {
                         // Chỉ lấy các category level 2 mà không có category con level 3
                         $level2Categories = Category::where('level', '2')
@@ -82,12 +79,11 @@ class CrawlCommand extends Command
                             })
                             ->get();
                         foreach ($level2Categories as $category) {
-                            $level2Job = new CrawlLevel2ProductsJob($category->code, $category->slug);
-                            $level2Job->handle();
+                            CrawlLevel2ProductsJob::dispatch($category->code, $category->slug);
                         }
+                        $this->info("Dispatched {$level2Categories->count()} level 2 jobs to queue");
                     }
-                    $this->info('Product for category level 2 crawl jobs completed successfully!');
-                    Log::info("=== LEVEL 2 PRODUCTS CRAWL COMPLETE ===");
+                    Log::info("=== LEVEL 2 PRODUCTS CRAWL DISPATCHED ===");
                     break;
 
                 case 'details':
@@ -98,12 +94,14 @@ class CrawlCommand extends Command
                         ->orderBy('slug')
                         ->get();
                     
+                    $this->info("Dispatching {$products->count()} detail jobs to queue...");
+                    
                     foreach ($products as $product) {
-                        $detailsJob = new CrawlProductDetailsAndVariantsJob($product->slug);
-                        $detailsJob->handle();
+                        CrawlProductDetailsAndVariantsJob::dispatch($product->slug);
                     }
-                    $this->info('Product details crawl jobs completed successfully!');
-                    Log::info("=== PRODUCT DETAILS AND VARIANTS CRAWL COMPLETE ===");
+                    
+                    $this->info('Product details jobs dispatched to queue successfully!');
+                    Log::info("=== PRODUCT DETAILS AND VARIANTS CRAWL DISPATCHED ===");
                     break;
                 default:
                     $this->error("Unknown crawl type: {$type}");
@@ -111,10 +109,10 @@ class CrawlCommand extends Command
                     return 1;
             }
 
-            $this->info('Crawl jobs completed successfully!');
+            $this->info('Crawl jobs dispatched to queue successfully!');
 
         } catch (\Exception $e) {
-            $this->error("Error running crawl jobs: " . $e->getMessage());
+            $this->error("Error dispatching crawl jobs: " . $e->getMessage());
             return 1;
         }
 

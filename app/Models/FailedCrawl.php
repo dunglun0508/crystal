@@ -42,11 +42,12 @@ class FailedCrawl extends Model
     }
 
     // Method để mark as resolved
-    public function markAsResolved()
+    public function markAsResolved($error = null)
     {
         $this->update([
             'resolved_at' => now(),
-            'last_attempt_at' => now()
+            'last_attempt_at' => now(),
+            'error' => $error
         ]);
     }
 

@@ -166,7 +166,7 @@ class CrawlController extends Controller
         \Log::info("=== CATEGORIES CRAWL START ===");
         
         try {
-            include 'simple_html_dom.php';
+            include_once 'simple_html_dom.php';
             $url = 'https://www.artcrystal.eu/';
             $html = file_get_html($url);
             if (!$html) {
@@ -379,7 +379,7 @@ class CrawlController extends Controller
     // Crawl products theo category slug
     public function crawlProductsByCategorySlug($url, $categoryCode) {
         if (!function_exists('file_get_html')) {
-            include app_path('Http/Controllers/simple_html_dom.php');
+            include_once app_path('Http/Controllers/simple_html_dom.php');
         }
         
         $context = stream_context_create([
@@ -552,18 +552,17 @@ class CrawlController extends Controller
     }
 
     private function normalizeProductSlug($url) {
-        // Loại bỏ domain nếu có
-        $url = str_replace('https://www.artcrystal.eu', '', $url);
-        $url = str_replace('http://www.artcrystal.eu', '', $url);
-        
+        // Nếu là URL đầy đủ, chỉ lấy phần path
+        $parsed = parse_url($url);
+        if (isset($parsed['path'])) {
+            $url = $parsed['path'];
+        }
         // Loại bỏ prefix ngôn ngữ (/en/, /cs/, /de/, etc.) - hỗ trợ 2-3 ký tự
         $url = preg_replace('/^\/[a-z]{2,3}\//', '/', $url);
-        
         // Đảm bảo bắt đầu bằng /
-        if (!str_starts_with($url, '/')) {
+        if ($url && $url[0] !== '/') {
             $url = '/' . $url;
         }
-        
         return $url;
     }
     
@@ -588,14 +587,14 @@ class CrawlController extends Controller
 
     public function crawlProductDetail($url, $slug = null) {
         if (!function_exists('file_get_html')) {
-            include app_path('Http/Controllers/simple_html_dom.php');
+            include_once app_path('Http/Controllers/simple_html_dom.php');
         }
         $baseUrl = 'https://www.artcrystal.eu';
         $fullUrl = str_starts_with($url, 'http') ? $url : $baseUrl . $url;
         
         $context = stream_context_create([
             'http' => [
-                'timeout' => 30,
+                'timeout' => 15,
                 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'follow_location' => true,
                 'max_redirects' => 10
@@ -603,14 +602,14 @@ class CrawlController extends Controller
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'timeout' => 30,
+                'timeout' => 15,
                 'allow_self_signed' => true
             ]
         ]);
         
         $checkContext = stream_context_create([
             'http' => [
-                'timeout' => 30,
+                'timeout' => 10,
                 'method' => 'HEAD',
                 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'follow_location' => true,
@@ -619,7 +618,7 @@ class CrawlController extends Controller
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'timeout' => 30,
+                'timeout' => 10,
                 'allow_self_signed' => true
             ]
         ]);
@@ -757,7 +756,7 @@ class CrawlController extends Controller
 
     public function crawlLevel2ProductsByCategorySlug($url, $categoryCode) {
         if (!function_exists('file_get_html')) {
-            include app_path('Http/Controllers/simple_html_dom.php');
+            include_once app_path('Http/Controllers/simple_html_dom.php');
         }
         
         $context = stream_context_create([
@@ -1191,13 +1190,13 @@ class CrawlController extends Controller
                 // Tải ảnh với timeout nhỏ
                 $context = stream_context_create([
                     'http' => [
-                        'timeout' => 15,
+                        'timeout' => 8,
                         'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     ],
                     'ssl' => [
                         'verify_peer' => false,
                         'verify_peer_name' => false,
-                        'timeout' => 15
+                        'timeout' => 8
                     ]
                 ]);
                 

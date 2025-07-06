@@ -117,6 +117,9 @@ class CrawlLevel3ProductsJob implements ShouldQueue
             
             Log::info("CrawlLevel3ProductsJob: {$this->categorySlug} | Crawled: " . count($products) . " | DB: " . $currentProducts->count() . " | Add: " . count($toAdd) . " | Update: " . count($toUpdate) . " | Delete: " . $deletedCount . " | Total: {$upsertedCount}");
             
+            // Kiểm tra xem có phải job products cuối cùng không và dispatch details job
+            $this->checkAndDispatchDetailsJob();
+            
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
             
@@ -173,5 +176,22 @@ class CrawlLevel3ProductsJob implements ShouldQueue
         ]);
     }
     
-
+    private function checkAndDispatchDetailsJob()
+    {
+        try {
+            // Kiểm tra xem còn job products nào đang chạy không
+            $pendingProductsJobs = \DB::table('jobs')
+                ->where('queue', 'products')
+                ->where('payload', 'like', '%CrawlLevel2ProductsJob%')
+                ->orWhere('payload', 'like', '%CrawlLevel3ProductsJob%')
+                ->count();
+            
+            if ($pendingProductsJobs <= 1) { // Chỉ còn job hiện tại hoặc không còn job nào
+                Log::info("CrawlLevel3ProductsJob: This appears to be the last products job, dispatching details job");
+                \App\Jobs\DispatchProductDetailsJob::dispatch();
+            }
+        } catch (\Exception $e) {
+            Log::error("CrawlLevel3ProductsJob: Failed to check and dispatch details job: " . $e->getMessage());
+        }
+    }
 }

@@ -23,7 +23,7 @@ class RetryFailedCrawlsCommand extends Command
         $this->info("Starting retry of failed crawls for type: {$type}");
 
         try {
-            $query = FailedCrawl::unresolved()->retryable();
+            $query = FailedCrawl::retryable();
 
             if ($type !== 'all') {
                 $query->ofType($type);
@@ -43,8 +43,6 @@ class RetryFailedCrawlsCommand extends Command
 
             foreach ($failedCrawls as $failedCrawl) {
                 try {
-                    $this->info("Retrying {$failedCrawl->type}: {$failedCrawl->identifier}");
-                    
                     switch ($failedCrawl->type) {
                         case 'category_level2':
                             $this->retryLevel2Category($failedCrawl);
@@ -53,25 +51,21 @@ class RetryFailedCrawlsCommand extends Command
                             $this->retryLevel3Category($failedCrawl);
                             break;
                         case 'product_detail':
+                        case 'product_detail_inaccessible':
                             $this->retryProductDetail($failedCrawl);
                             break;
                         default:
                             $this->warn("Unknown type: {$failedCrawl->type}");
                             continue 2;
                     }
-
-                    $failedCrawl->markAsResolved();
+                    $failedCrawl->delete();
                     $successCount++;
-                    $this->info("✓ Successfully retried {$failedCrawl->type}: {$failedCrawl->identifier}");
-                    
                 } catch (\Exception $e) {
                     $failedCrawl->incrementAttempts();
-                    $failedCrawl->update(['error' => $e->getMessage()]);
-                    $this->error("✗ Failed to retry {$failedCrawl->type}: {$failedCrawl->identifier} - {$e->getMessage()}");
+                    $failedCrawl->markAsResolved($e->getMessage());
                 }
 
                 $retriedCount++;
-                
                 // Add delay between retries
                 if ($retriedCount < $failedCrawls->count()) {
                     sleep(rand(2, 5));
