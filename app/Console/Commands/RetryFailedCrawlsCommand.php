@@ -29,6 +29,12 @@ class RetryFailedCrawlsCommand extends Command
                 $query->ofType($type);
             }
 
+            if ($type === 'all' || $type === 'product_detail_inaccessible') {
+                // Không filter resolved_at cho product_detail_inaccessible
+            } else {
+                $query->unresolved();
+            }
+
             $failedCrawls = $query->limit($limit)->get();
 
             if ($failedCrawls->isEmpty()) {
