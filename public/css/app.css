@@ -1,1 +1,91 @@
+@font-face {
+    font-family: 'Lora';
+    src: url(/fonts/Lora-Bold.ttf?9a0fff275efa282f95161a091630a499) format('ttf');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Raleway';
+    src: url(/fonts/Raleway-Regular.ttf?d9219d8a361ac3530c7e62150bca03b7) format('ttf');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+/* css mobile */
+.btn-cart-icon-mobile {
+    border: 1px solid #EAEFED;
+    background-color: #FFFFFF;
+    padding: 8px;
+    border-radius: 18px;
+}
+.btn-menu-icon-mobile, .btn-close-menu-icon-mobile {
+    border: none;
+    background-color: #2F5E4E;
+    padding: 8px;
+    border-radius: 18px;
+}
+.offcanvas-header h5{
+    font-family: Lora;
+    font-weight: 700;
+    font-style: Bold;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: 0%;
+    color: #2A2A2A;
+}
+.offcanvas-body .sidebar-link {
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 24px;
+    letter-spacing: 0%;
+    vertical-align: middle;
+    color: #363636;
+}
+.nav-item-mobile {
+    width: 180px;
+}
+.nav-item-mobile .nav-link {
+    color: #363636;
+    font-family: Raleway;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: 0%;
+    vertical-align: middle;
+}
+.nav-item-mobile .dropdown-toggle::after {
+    content: unset;
+}
 
+@media (max-width: 1399.98px) {
+    .offcanvas .dropdown-menu {
+        background: #fff !important; /* hoặc màu bạn dùng ở desktop */
+        border: 1px solid #e6e6e6 !important;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
+        border-radius: 12px !important;
+        padding: 8px 0;
+        animation: dropdown-slide-down 0.25s;
+        width: 180px;
+    }
+    .offcanvas .dropdown.show .dropdown-menu {
+        opacity: 1;
+        transform: translateY(-40px) !important;
+        pointer-events: auto;
+    }
+    .offcanvas .dropdown-item {
+        color: #2d5c4d;
+        font-size: 16px;
+        border-radius: 8px;
+        padding: 10px 20px;
+        transition: background 0.2s;
+    }
+    .offcanvas .dropdown-item:hover {
+        background: #e6ede7;
+    }
+}
+@keyframes dropdown-slide-down {
+    from { opacity: 0; transform: translateY(-46px) !important;}
+    to   { opacity: 1; transform: translateY(0) !important;}
+}

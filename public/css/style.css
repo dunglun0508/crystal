@@ -50,10 +50,6 @@
     border: 1px solid #EAEFED;
 }
 
-.nav-item .nav-link.dropdown-toggle img {
-    margin-right: 10px;
-}
-
 .nav-item .nav-link.dropdown-toggle span {
     margin-right: 15px;
 }

@@ -29,6 +29,7 @@
         <!-- Template Stylesheet -->
         <link href="{{asset('template/css/style.css')}}" rel="stylesheet">
         <link href="{{mix('css/style.css')}}" rel="stylesheet">
+        <link href="{{mix('css/app.css')}}" rel="stylesheet">
     </head>
 
     <body>
@@ -66,15 +67,12 @@
             </div> -->
             <div class="container-fluid bg-light" id='header'>
                 <div class="container px-0">
-                    <nav class="navbar navbar-light navbar-expand-xl">
+                    <!-- Nav desktop (ẩn trên mobile) -->
+                    <nav class="navbar navbar-light navbar-expand-xl d-none d-xxl-flex">
                         <a href="index.html" class="navbar-brand">
-                            <!-- <h1 class="text-primary display-4">Sparlex</h1> -->
                             <img src="{{asset('img/logo.png')}}" alt="">
                         </a>
-                        <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                            <span class="fa fa-bars text-primary"></span>
-                        </button>
-                        <div class="collapse navbar-collapse  py-3" id="navbarCollapse">
+                        <div class="collapse navbar-collapse  py-3 show" id="navbarCollapse">
                             <div class="navbar-nav mx-auto border-top">
                                 <a href="index.html" class="nav-item nav-link active">Home</a>
                                 <a href="service.html" class="nav-item nav-link">Our Services</a>
@@ -90,16 +88,13 @@
                                         <a href="team.html" class="dropdown-item">
                                             <img src="{{asset('img/uk-flag.png')}}" alt="">
                                             <span>English</span>
-                                            <img src='{{asset("img/arrow-down.svg")}}'>
                                         </a>
                                         <a href="testimonial.html" class="dropdown-item">
                                             <img src="{{asset('img/uk-flag.png')}}" alt="">
                                             <span>English</span>
-                                            <img src='{{asset("img/arrow-down.svg")}}'>
                                         </a>
                                     </div>
                                 </div>
-                                <!-- <a href="contact.html" class="nav-item nav-link">Contact Us</a> -->
                             </div>
                             <div class="d-flex align-items-center flex-nowrap pt-xl-0">
                                 <button class="btn-search btn btn-primary btn-primary-outline-0 rounded-circle btn-lg-square" ><img src="{{asset('img/bag-2.svg')}}"></button>
@@ -107,6 +102,56 @@
                             </div>
                         </div>
                     </nav>
+                    <!-- Nav mobile (ẩn trên desktop) -->
+                    <nav class="navbar navbar-light d-flex d-xxl-none justify-content-between align-items-center px-2 py-2">
+                        <a href="index.html" class="navbar-brand">
+                            <img src="{{asset('img/logo.png')}}" alt="" style="height:40px;">
+                        </a>
+                        <div class="d-flex align-items-center">
+                            <button class="p-2 me-2 btn-cart-icon-mobile">
+                                <img src="{{asset('img/bag-2.svg')}}" alt="" style="height:28px;">
+                            </button>
+                            <button class="p-2 btn-menu-icon-mobile" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+                                <img src="{{asset('img/menu-icon.svg')}}" alt="" style="height:24px;">
+                            </button>
+                        </div>
+                    </nav>
+                    <!-- Offcanvas Sidebar Bootstrap -->
+                    <div class="offcanvas offcanvas-end" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+                      <div class="offcanvas-header">
+                        <h5 class="offcanvas-title fw-bold" id="mobileSidebarLabel">Categories</h5>
+                        <button type="button" class="btn-close-menu-icon-mobile" data-bs-dismiss="offcanvas" aria-label="Close">
+                            <img src="{{asset('img/close-menu-icon.svg')}}" alt="" style="height:24px;">
+                        </button>
+                      </div>
+                      <div class="offcanvas-body d-flex flex-column">
+                        <a href="index.html" class="sidebar-link">Home</a>
+                        <hr>
+                        <a href="service.html" class="sidebar-link">Our Services</a>
+                        <hr>
+                        <a href="price.html" class="sidebar-link">Blog & News</a>
+                        <hr>
+                        <a href="about.html" class="sidebar-link">About us</a>
+                        <hr>
+                        <div class="nav-item nav-item-mobile dropdown">
+                            <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                                <img src="{{asset('img/uk-flag.png')}}" alt="">
+                                <span>English</span>
+                                <img src='{{asset("img/arrow-down.svg")}}'>
+                            </a>
+                            <div class="dropdown-menu m-0 bg-secondary rounded-0">
+                                <a href="team.html" class="dropdown-item">
+                                    <img src="{{asset('img/uk-flag.png')}}" alt="">
+                                    <span>English</span>
+                                </a>
+                                <a href="testimonial.html" class="dropdown-item">
+                                    <img src="{{asset('img/uk-flag.png')}}" alt="">
+                                    <span>English</span>
+                                </a>
+                            </div>
+                        </div>
+                      </div>
+                    </div>
                 </div>
             </div>
         </div>
