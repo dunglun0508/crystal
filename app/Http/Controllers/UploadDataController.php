@@ -233,6 +233,33 @@ class UploadDataController extends Controller
     }
 
     /**
+     * Dispatch job xóa tất cả products trên Shopify (chạy ngầm)
+     */
+    public function deleteAllProducts()
+    {
+        try {
+            \Log::info("Dispatch job xóa tất cả products trên Shopify");
+            
+            // Dispatch job vào queue
+            \App\Jobs\DeleteAllProductsJob::dispatch()->onQueue('shopify-sync');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Job xóa tất cả products đã được dispatch. Kiểm tra logs để theo dõi tiến trình.',
+                'note' => 'Chạy: php artisan queue:work --queue=shopify-sync'
+            ]);
+            
+        } catch (\Throwable $e) {
+            \Log::error("Lỗi dispatch job xóa products: " . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Chuẩn bị dữ liệu danh mục cho Shopify
      */
     private function prepareCategoryData(Category $category)
@@ -381,22 +408,58 @@ class UploadDataController extends Controller
 
         // Đặc điểm từ Product
         if ($product->indicators) {
-            $description .= "<h3>Đặc điểm chính</h3><p>{$product->indicators}</p>";
+            $indicators = json_decode($product->indicators, true);
+            if (is_array($indicators)) {
+                $description .= "<h3>Main Features</h3><ul>";
+                foreach ($indicators as $indicator) {
+                    $description .= "<li>" . htmlspecialchars($indicator) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Main Features</h3><p>{$product->indicators}</p>";
+            }
         }
 
         // Đặc điểm chi tiết từ ProductDetail
         if ($product->productDetail && $product->productDetail->detail_indicators) {
-            $description .= "<h3>Đặc điểm chi tiết</h3><p>{$product->productDetail->detail_indicators}</p>";
+            $indicators = json_decode($product->productDetail->detail_indicators, true);
+            if (is_array($indicators)) {
+                $description .= "<h3>Detailed Features</h3><ul>";
+                foreach ($indicators as $indicator) {
+                    $description .= "<li>" . htmlspecialchars($indicator) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Detailed Features</h3><p>{$product->productDetail->detail_indicators}</p>";
+            }
         }
 
         // Thông số kỹ thuật
         if ($product->productDetail && $product->productDetail->specs) {
-            $description .= "<h3>Thông số kỹ thuật</h3><div>{$product->productDetail->specs}</div>";
+            $specs = json_decode($product->productDetail->specs, true);
+            if (is_array($specs)) {
+                $description .= "<h3>Technical Specifications</h3><table class='specs-table'>";
+                foreach ($specs as $key => $value) {
+                    $description .= "<tr><td><strong>" . htmlspecialchars($key) . "</strong></td><td>" . htmlspecialchars($value) . "</td></tr>";
+                }
+                $description .= "</table>";
+            } else {
+                $description .= "<h3>Technical Specifications</h3><div>{$product->productDetail->specs}</div>";
+            }
         }
 
         // Tính năng chính
         if ($product->productDetail && $product->productDetail->key_features) {
-            $description .= "<h3>Tính năng chính</h3><div>{$product->productDetail->key_features}</div>";
+            $features = json_decode($product->productDetail->key_features, true);
+            if (is_array($features)) {
+                $description .= "<h3>Key Features</h3><ul>";
+                foreach ($features as $feature) {
+                    $description .= "<li>" . htmlspecialchars($feature) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Key Features</h3><div>{$product->productDetail->key_features}</div>";
+            }
         }
 
         // Meta description

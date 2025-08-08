@@ -48,9 +48,9 @@ class UpdateExistingProductJob implements ShouldQueue
             $result = $shopifyService->updateProduct($productId, $updateData);
 
             if ($result['success']) {
-                Log::info("✅ Cập nhật thành công product '{$this->product->title}' trên Shopify");
+                Log::info("Cập nhật thành công product '{$this->product->title}' trên Shopify");
             } else {
-                Log::error("❌ Lỗi cập nhật product '{$this->product->title}' trên Shopify: " . json_encode($result));
+                Log::error("Lỗi cập nhật product '{$this->product->title}' trên Shopify: " . json_encode($result));
             }
 
         } catch (\Exception $e) {

@@ -118,10 +118,20 @@ class ShopifyService
     }
 
     /**
-     * Tạo product mới
+     * Tạo product mới theo quy trình chuẩn Shopify
      */
     public function createProduct($productData)
     {
+        // Tách các thành phần không thuộc ProductInput
+        $variants = $productData['variants'] ?? [];
+        $images = $productData['images'] ?? [];
+        $tags = $productData['tags'] ?? '';
+        $collectionId = $productData['collectionId'] ?? null;
+        
+        // Loại bỏ các field không hợp lệ khỏi ProductInput
+        unset($productData['variants'], $productData['images'], $productData['tags'], $productData['collectionId']);
+
+        // Bước 1: Tạo product "rỗng" (chỉ có 1 default variant)
         $mutation = '
         mutation productCreate($input: ProductInput!) {
             productCreate(input: $input) {
@@ -137,52 +147,160 @@ class ShopifyService
             }
         }';
 
-        // Loại bỏ images, variants, tags, collections và collectionId khỏi productData
-        $cleanProductData = array_diff_key($productData, array_flip(['images', 'variants', 'tags', 'collections', 'collectionId']));
+        $result = $this->makeGraphQLRequest($mutation, ['input' => $productData]);
         
-        $result = $this->makeGraphQLRequest($mutation, ['input' => $cleanProductData]);
-        
-        // Nếu tạo product thành công và có images/variants, thêm chúng sau
-        if ($result['success'] && isset($result['data']['productCreate']['product']['id'])) {
-            $productId = $result['data']['productCreate']['product']['id'];
-            \Log::info("Product created successfully with ID: {$productId}");
-            
-            // Thêm images nếu có
-            if (isset($productData['images']) && !empty($productData['images'])) {
-                \Log::info("Adding " . count($productData['images']) . " images to product");
-                $this->addProductImages($productId, $productData['images']);
-            } else {
-                \Log::info("No images to add");
+        if (!($result['success'] ?? false)) {
+            \Log::error("Failed to create product: " . json_encode($result));
+            return false;
+        }
+
+        $product = $result['data']['productCreate']['product'] ?? null;
+        if (!$product) {
+            \Log::error("Product creation failed: " . json_encode($result));
+            return false;
+        }
+
+        $productId = $product['id'];
+        \Log::info("Product created successfully with ID: {$productId}");
+
+        // Bước 2: Tạo variants với price và inventory (nếu có variants)
+        if (!empty($variants)) {
+            $this->createProductVariantsWithInventory($productId, $variants);
+        }
+
+        // Trả về product ID và các thành phần cần thêm sau
+        return [
+            'id' => $productId,
+            'variants' => $variants,
+            'images' => $images,
+            'tags' => $tags,
+            'collectionId' => $collectionId
+        ];
+    }
+
+    /**
+     * Lấy Location ID đầu tiên từ Shopify
+     */
+    public function getFirstLocationId()
+    {
+        $query = '
+        query {
+            locations(first: 1) {
+                edges {
+                    node {
+                        id
+                    }
+                }
             }
-            
-            // Thêm variants nếu có
-            if (isset($productData['variants']) && !empty($productData['variants'])) {
-                \Log::info("Adding " . count($productData['variants']) . " variants to product");
-                $this->addProductVariants($productId, $productData['variants']);
-            } else {
-                \Log::info("No variants to add");
+        }';
+
+        $result = $this->makeGraphQLRequest($query);
+
+        if ($result && ($result['success'] ?? false)) {
+            $locations = $result['data']['locations']['edges'] ?? [];
+            if (!empty($locations)) {
+                return $locations[0]['node']['id'];
+            }
+        }
+
+        // Fallback về location mặc định nếu không lấy được
+        return 'gid://shopify/Location/1';
+    }
+
+    /**
+     * Tạo variants với price và inventory theo quy trình chuẩn
+     */
+    private function createProductVariantsWithInventory($productId, $variants)
+    {
+        // Tự động lấy Location ID đầu tiên
+        $locationId = $this->getFirstLocationId();
+        \Log::info("Using location ID: {$locationId}");
+        
+        // Chuẩn bị variants data cho bulk create
+        $variantsInput = [];
+        foreach ($variants as $variant) {
+            $variantInput = [
+                'price' => $variant['price'] ?? '0.00',
+                'optionValues' => [
+                    [
+                        'optionName' => 'Title',
+                        'name' => (string)($variant['title'] ?? 'Default Title')
+                    ]
+                ],
+                'inventoryItem' => [
+                    'tracked' => true,
+                    'sku' => $variant['sku'] ?? ''
+                ]
+            ];
+
+            // Thêm inventory quantities nếu có - theo schema mới Shopify 2025-01
+            if (isset($variant['inventoryQuantity']) && $variant['inventoryQuantity'] > 0) {
+                $variantInput['inventoryQuantities'] = [
+                    [
+                        'locationId' => $locationId,
+                        'availableQuantity' => $variant['inventoryQuantity']
+                    ]
+                ];
             }
 
-            // Thêm tags nếu có
-            if (isset($productData['tags']) && !empty($productData['tags'])) {
-                \Log::info("Adding tags to product: " . $productData['tags']);
-                $this->addProductTags($productId, $productData['tags']);
-            } else {
-                \Log::info("No tags to add");
-            }
+            $variantsInput[] = $variantInput;
+        }
 
-            // Thêm product vào collection nếu có
-            if (isset($productData['collectionId']) && !empty($productData['collectionId'])) {
-                \Log::info("Adding product to collection: " . $productData['collectionId']);
-                $this->addProductToCollection($productId, $productData['collectionId']);
-            } else {
-                \Log::info("No collection to add");
+        \Log::info("Creating variants with data: " . json_encode($variantsInput));
+
+        $mutation = '
+        mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkCreate(
+                productId: $productId,
+                strategy: REMOVE_STANDALONE_VARIANT,
+                variants: $variants
+            ) {
+                product {
+                    id
+                    variants(first: 10) {
+                        edges {
+                            node {
+                                id
+                                title
+                                sku
+                                price
+                                inventoryItem {
+                                    id
+                                    tracked
+                                }
+                            }
+                        }
+                    }
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }';
+
+        $result = $this->makeGraphQLRequest($mutation, [
+            'productId' => $productId,
+            'variants' => $variantsInput
+        ]);
+
+        if ($result['success'] ?? false) {
+            $productData = $result['data']['productVariantsBulkCreate']['product'] ?? null;
+            if ($productData && isset($productData['variants']['edges'])) {
+                foreach ($productData['variants']['edges'] as $variantEdge) {
+                    $variant = $variantEdge['node'];
+                    \Log::info("Variant created successfully: " . json_encode([
+                        'id' => $variant['id'],
+                        'title' => $variant['title'],
+                        'sku' => $variant['sku'],
+                        'price' => $variant['price'],
+                        'tracked' => $variant['inventoryItem']['tracked']
+                    ]));
+                }
             }
         } else {
-            \Log::error("Failed to create product: " . json_encode($result));
+            \Log::error("Failed to create variants: " . json_encode($result));
         }
-        
-        return $result;
     }
 
     /**
@@ -205,24 +323,14 @@ class ShopifyService
             }
         }';
 
-        // Loại bỏ images, variants, tags, collections và collectionId khỏi productData
+        // Chỉ cập nhật thông tin cơ bản, không thêm lại images/variants
         $cleanProductData = array_diff_key($productData, array_flip(['images', 'variants', 'tags', 'collections', 'collectionId']));
         $cleanProductData['id'] = $productId;
         
         $result = $this->makeGraphQLRequest($mutation, ['input' => $cleanProductData]);
         
-        // Nếu cập nhật product thành công và có images/variants, thêm chúng sau
+        // Chỉ thêm tags và collection assignment nếu cần
         if ($result['success']) {
-            // Thêm images nếu có
-            if (isset($productData['images']) && !empty($productData['images'])) {
-                $this->addProductImages($productId, $productData['images']);
-            }
-            
-            // Thêm variants nếu có
-            if (isset($productData['variants']) && !empty($productData['variants'])) {
-                $this->addProductVariants($productId, $productData['variants']);
-            }
-
             // Thêm tags nếu có
             if (isset($productData['tags']) && !empty($productData['tags'])) {
                 $this->addProductTags($productId, $productData['tags']);
@@ -240,7 +348,7 @@ class ShopifyService
     /**
      * Thêm images cho product
      */
-    private function addProductImages($productId, $images)
+    public function addProductImages($productId, $images)
     {
         foreach ($images as $image) {
             $url = $image['src'] ?? null;
@@ -533,7 +641,15 @@ class ShopifyService
      */
     private function addProductVariants($productId, $variants)
     {
-        foreach ($variants as $variant) {
+        foreach ($variants as $index => $variant) {
+            $variantNumber = $index + 1;
+            \Log::info("Tạo variant {$variantNumber}: " . json_encode([
+                'price' => $variant['price'] ?? 'N/A',
+                'sku' => $variant['sku'] ?? 'N/A',
+                'title' => $variant['title'] ?? 'N/A',
+                'inventoryQuantity' => $variant['inventoryQuantity'] ?? 0
+            ]));
+
             $mutation = '
             mutation productVariantCreate($input: ProductVariantInput!) {
                 productVariantCreate(input: $input) {
@@ -545,6 +661,7 @@ class ShopifyService
                         inventoryItem {
                             id
                         }
+                        inventoryQuantity
                     }
                     userErrors {
                         field
@@ -559,7 +676,8 @@ class ShopifyService
                 'sku' => $variant['sku'] ?? '',
                 'inventoryQuantity' => $variant['inventoryQuantity'] ?? 0,
                 'weight' => $variant['weight'] ?? 0,
-                'weightUnit' => $variant['weightUnit'] ?? 'KILOGRAMS'
+                'weightUnit' => $variant['weightUnit'] ?? 'KILOGRAMS',
+                'inventoryPolicy' => 'DENY' // Bật inventory tracking
             ];
 
             // Thêm title nếu có
@@ -569,13 +687,30 @@ class ShopifyService
 
             $result = $this->makeGraphQLRequest($mutation, ['input' => $variantInput]);
             
-            // Nếu tạo variant thành công và có inventory, cập nhật inventory
-            if ($result['success'] && isset($result['data']['productVariantCreate']['productVariant']['inventoryItem']['id'])) {
-                $inventoryItemId = $result['data']['productVariantCreate']['productVariant']['inventoryItem']['id'];
-                $quantity = $variant['inventoryQuantity'] ?? 0;
-                
-                if ($quantity > 0) {
-                    $this->updateVariantInventory($inventoryItemId, $quantity);
+            if (!($result['success'] ?? false)) {
+                \Log::error("Lỗi tạo variant: " . json_encode($result));
+                continue;
+            }
+
+            $variantData = $result['data']['productVariantCreate']['productVariant'] ?? null;
+            if ($variantData) {
+                \Log::info("Variant tạo thành công: " . json_encode([
+                    'id' => $variantData['id'],
+                    'title' => $variantData['title'],
+                    'sku' => $variantData['sku'],
+                    'price' => $variantData['price'],
+                    'inventoryQuantity' => $variantData['inventoryQuantity']
+                ]));
+
+                // Cập nhật inventory nếu có inventoryItem ID
+                if (isset($variantData['inventoryItem']['id'])) {
+                    $inventoryItemId = $variantData['inventoryItem']['id'];
+                    $quantity = $variant['inventoryQuantity'] ?? 0;
+                    
+                    if ($quantity > 0) {
+                        \Log::info("Cập nhật inventory cho variant: {$quantity}");
+                        $this->updateVariantInventory($inventoryItemId, $quantity);
+                    }
                 }
             }
         }
@@ -584,7 +719,7 @@ class ShopifyService
     /**
      * Thêm tags cho product
      */
-    private function addProductTags($productId, $tags)
+    public function addProductTags($productId, $tags)
     {
         if (empty($tags)) {
             return;
@@ -615,7 +750,7 @@ class ShopifyService
     /**
      * Thêm product vào collection
      */
-    private function addProductToCollection($productId, $collectionId)
+    public function addProductToCollection($productId, $collectionId)
     {
         if (empty($collectionId)) {
             return;
@@ -647,9 +782,89 @@ class ShopifyService
     }
 
     /**
+     * Thêm ảnh cho collection
+     */
+    public function addCollectionImage($collectionId, $imageUrl, $altText = '')
+    {
+        try {
+            \Log::info("Starting collection image upload for collection ID: {$collectionId}");
+            \Log::info("Image URL: {$imageUrl}");
+            
+            // Sử dụng Staged Uploads flow của Shopify
+            $originalSource = $this->uploadImageViaStagedUploads($imageUrl, $altText);
+            if (!$originalSource) {
+                \Log::error("Failed to upload image via Staged Uploads: {$imageUrl}");
+                return false;
+            }
+            
+            \Log::info("Image uploaded via Staged Uploads successfully. Original source: " . substr($originalSource, 0, 50) . "...");
+
+            // Sử dụng collectionUpdate với ImageInput.src
+            $mutation = '
+            mutation collectionUpdate($input: CollectionInput!) {
+                collectionUpdate(input: $input) {
+                    collection { 
+                        id 
+                        title 
+                        image { 
+                            altText 
+                            url 
+                        } 
+                    }
+                    userErrors { 
+                        field 
+                        message 
+                    }
+                }
+            }';
+
+            $input = [
+                'id' => $collectionId,
+                'image' => [
+                    'src' => $originalSource,   // URL staged
+                    'altText' => $altText ?: 'Collection image',
+                ],
+            ];
+
+            \Log::info("Sending collection image update to Shopify with input: " . json_encode($input));
+
+            $result = $this->makeGraphQLRequest($mutation, ['input' => $input]);
+
+            if (!($result['success'] ?? false)) {
+                \Log::error('GraphQL request failed for collection image: ' . json_encode($result));
+                return false;
+            }
+
+            $payload = $result['data']['collectionUpdate'] ?? [];
+            if (!empty($payload['userErrors'])) {
+                \Log::error('Shopify collection userErrors: ' . json_encode($payload['userErrors']));
+                return false;
+            }
+
+            $collection = $payload['collection'] ?? [];
+            $image = $collection['image'] ?? null;
+            
+            if ($image) {
+                \Log::info('Collection image uploaded successfully: ' . json_encode($image));
+            } else {
+                \Log::warning('Collection updated but no image data returned');
+            }
+            
+            return true;
+
+        } catch (\Throwable $e) {
+            \Log::error('Exception in addCollectionImage: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return false;
+        }
+    }
+
+
+
+    /**
      * Cập nhật inventory cho variant
      */
-    private function updateVariantInventory($variantId, $quantity)
+    public function updateVariantInventory($variantId, $quantity)
     {
         $mutation = '
         mutation inventorySetQuantity($input: InventorySetQuantityInput!) {
@@ -680,9 +895,234 @@ class ShopifyService
     }
 
     /**
+     * Xóa collection
+     */
+    public function deleteCollection($collectionId)
+    {
+        $mutation = '
+        mutation collectionDelete($input: CollectionDeleteInput!) {
+            collectionDelete(input: $input) {
+                deletedCollectionId
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }';
+
+        return $this->makeGraphQLRequest($mutation, ['input' => ['id' => $collectionId]]);
+    }
+
+
+
+
+
+    /**
+     * Đếm tổng số products trên Shopify
+     */
+    public function countProducts()
+    {
+        try {
+            \Log::info("🔢 Counting products on Shopify...");
+            
+            $query = '
+            query {
+                products(first: 1) {
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }';
+
+            $result = $this->makeGraphQLRequest($query);
+            
+            if (!($result['success'] ?? false)) {
+                \Log::error("Failed to count products: " . json_encode($result));
+                return false;
+            }
+
+            // Shopify không cung cấp total count trực tiếp, nên ta sẽ đếm bằng cách fetch tất cả
+            $totalCount = 0;
+            $hasNextPage = true;
+            $cursor = null;
+            $pageCount = 0;
+
+            while ($hasNextPage) {
+                $pageCount++;
+                
+                $query = '
+                query($first: Int!, $after: String) {
+                    products(first: $first, after: $after) {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
+                    }
+                }';
+
+                $variables = ['first' => 250];
+                if ($cursor) {
+                    $variables['after'] = $cursor;
+                }
+
+                $result = $this->makeGraphQLRequest($query, $variables);
+                
+                if (!($result['success'] ?? false)) {
+                    \Log::error("Failed to count products page {$pageCount}: " . json_encode($result));
+                    return false;
+                }
+
+                $products = $result['data']['products']['edges'] ?? [];
+                $totalCount += count($products);
+                
+                $pageInfo = $result['data']['products']['pageInfo'] ?? [];
+                $hasNextPage = $pageInfo['hasNextPage'] ?? false;
+                $cursor = $pageInfo['endCursor'] ?? null;
+                
+                \Log::info("Counted page {$pageCount}: " . count($products) . " products (Total: {$totalCount})");
+            }
+
+            \Log::info("📈 Total products count: {$totalCount}");
+            return $totalCount;
+
+        } catch (\Throwable $e) {
+            \Log::error("Error counting products: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function deleteAllProducts()
+    {
+        try {
+            \Log::info("Starting fetch all products for deletion...");
+            
+            // Lấy danh sách tất cả products
+            $allProducts = [];
+            $hasNextPage = true;
+            $cursor = null;
+            $pageCount = 0;
+
+            while ($hasNextPage) {
+                $pageCount++;
+                \Log::info("Fetching page {$pageCount}...");
+                
+                $query = '
+                query($first: Int!, $after: String) {
+                    products(first: $first, after: $after) {
+                        edges {
+                            node {
+                                id
+                                title
+                                handle
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
+                    }
+                }';
+
+                $variables = ['first' => 250];
+                if ($cursor) {
+                    $variables['after'] = $cursor;
+                }
+
+                $result = $this->makeGraphQLRequest($query, $variables);
+                
+                if (!($result['success'] ?? false)) {
+                    \Log::error("Failed to fetch products page {$pageCount}: " . json_encode($result));
+                    return false;
+                }
+
+                $products = $result['data']['products']['edges'] ?? [];
+                \Log::info("Found " . count($products) . " products on page {$pageCount}");
+                
+                foreach ($products as $edge) {
+                    $allProducts[] = $edge['node'];
+                }
+
+                $pageInfo = $result['data']['products']['pageInfo'] ?? [];
+                $hasNextPage = $pageInfo['hasNextPage'] ?? false;
+                $cursor = $pageInfo['endCursor'] ?? null;
+            }
+
+            \Log::info("Total products found: " . count($allProducts));
+            
+            if (count($allProducts) === 0) {
+                \Log::info("No products to delete");
+                return [];
+            }
+
+            return $allProducts;
+
+        } catch (\Throwable $e) {
+            \Log::error("Error in deleteAllProducts: " . $e->getMessage());
+            return false;
+        }
+    }
+
+
+
+
+
+
+
+    /**
+     * Xóa một product theo ID
+     */
+    public function deleteProduct($productId)
+    {
+        $mutation = '
+        mutation productDelete($input: ProductDeleteInput!) {
+            productDelete(input: $input) {
+                deletedProductId
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }';
+
+        $result = $this->makeGraphQLRequest($mutation, [
+            'input' => [
+                'id' => $productId
+            ]
+        ]);
+
+        if (!($result['success'] ?? false)) {
+            \Log::error("Error deleting product: " . json_encode($result));
+            return false;
+        }
+
+        $userErrors = $result['data']['productDelete']['userErrors'] ?? [];
+        if (!empty($userErrors)) {
+            $errorMessage = $userErrors[0]['message'] ?? '';
+            
+            // Nếu product không tồn tại, coi như thành công (đã được xóa)
+            if (strpos($errorMessage, 'Product does not exist') !== false || 
+                strpos($errorMessage, 'does not exist') !== false) {
+                \Log::info("Product already deleted or does not exist");
+                return true;
+            }
+            
+            \Log::error("User errors when deleting product: " . json_encode($userErrors));
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Thực hiện GraphQL request
      */
-    protected function makeGraphQLRequest($query, $variables = [])
+    public function makeGraphQLRequest($query, $variables = [])
     {
         try {
             $response = Http::withHeaders([

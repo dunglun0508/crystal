@@ -33,40 +33,77 @@ class SyncProductToShopifyJob implements ShouldQueue
     public function handle(ShopifyService $shopifyService)
     {
         try {
-            Log::info("Bắt đầu đồng bộ product '{$this->product->title}' lên Shopify");
-
-            // Load relationships
-            $this->product->load(['category', 'variants', 'productDetail']);
-
-            // Kiểm tra xem sản phẩm đã tồn tại trên Shopify chưa
-            $existingProduct = $shopifyService->findProductByHandle($this->product->slug);
+            \Log::info("Sync product: {$this->product->title}");
             
             $productData = $this->prepareProductData($this->product);
+            $existingProductResult = $shopifyService->findProductByHandle($productData['handle']);
             
-            Log::info("Product data prepared: " . json_encode($productData, JSON_PRETTY_PRINT));
+            \Log::info("Product search result: " . json_encode($existingProductResult));
             
-            if ($existingProduct['success'] && isset($existingProduct['data']['productByHandle'])) {
-                // Cập nhật product đã tồn tại
-                $result = $shopifyService->updateProduct(
-                    $existingProduct['data']['productByHandle']['id'], 
-                    $productData
-                );
-                $action = 'cập nhật';
+            $existingProduct = null;
+            $productId = null;
+            
+            // Kiểm tra kết quả tìm product
+            if ($existingProductResult && ($existingProductResult['success'] ?? false)) {
+                $foundProductData = $existingProductResult['data']['productByHandle'] ?? null;
+                if ($foundProductData && isset($foundProductData['id'])) {
+                    $existingProduct = $foundProductData;
+                    $productId = $foundProductData['id'];
+                    \Log::info("Found existing product: {$foundProductData['title']} (ID: {$foundProductData['id']})");
+                } else {
+                    \Log::info("Product not found in Shopify (handle: {$productData['handle']})");
+                }
             } else {
-                // Tạo product mới
-                $result = $shopifyService->createProduct($productData);
-                $action = 'tạo mới';
+                \Log::warning("Failed to check product existence: " . json_encode($existingProductResult));
             }
-
-            if ($result['success']) {
-                Log::info("Đã {$action} sản phẩm '{$this->product->title}' trên Shopify thành công");
+            
+            // Tạo hoặc cập nhật product
+            if (!$existingProduct) {
+                \Log::info("Create new product: {$this->product->title}");
+                
+                // Tạo product với variants
+                $createResult = $shopifyService->createProduct($productData);
+                
+                if ($createResult && isset($createResult['id'])) {
+                    $productId = $createResult['id'];
+                    
+                    // Thêm images sau khi tạo product
+                    if (!empty($createResult['images'])) {
+                        \Log::info("Adding " . count($createResult['images']) . " images to product");
+                        $shopifyService->addProductImages($productId, $createResult['images']);
+                    }
+                    
+                    // Thêm tags sau khi tạo product
+                    if (!empty($createResult['tags'])) {
+                        \Log::info("Adding tags to product: " . $createResult['tags']);
+                        $shopifyService->addProductTags($productId, $createResult['tags']);
+                    }
+                    
+                    // Thêm product vào collection sau khi tạo product
+                    if (!empty($createResult['collectionId'])) {
+                        \Log::info("Adding product to collection: " . $createResult['collectionId']);
+                        $shopifyService->addProductToCollection($productId, $createResult['collectionId']);
+                    }
+                    
+                    // Inventory đã được xử lý trong createProductVariantsWithInventory
+                    \Log::info("Product synced successfully: {$this->product->title}");
+                } else {
+                    throw new \Exception("Failed to create product: {$this->product->title}");
+                }
             } else {
-                Log::error("Lỗi {$action} sản phẩm '{$this->product->title}' trên Shopify: " . $result['error']);
-                throw new \Exception($result['error']);
+                // Cập nhật product hiện có
+                \Log::info("Update existing product: {$this->product->title}");
+                $result = $shopifyService->updateProduct($productId, $productData);
+                
+                if (!($result['success'] ?? false)) {
+                    throw new \Exception("Failed to update product: " . json_encode($result));
+                }
+                
+                \Log::info("Product updated successfully: {$this->product->title}");
             }
-
-        } catch (\Exception $e) {
-            Log::error("Lỗi đồng bộ sản phẩm '{$this->product->title}' lên Shopify: " . $e->getMessage());
+            
+        } catch (\Throwable $e) {
+            \Log::error("Sync product failed {$this->product->title}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -157,9 +194,12 @@ class SyncProductToShopifyJob implements ShouldQueue
                     'weightUnit' => 'KILOGRAMS'
                 ];
 
-                // Thêm tên variant nếu có
+                // Thêm tên variant nếu có - sử dụng name từ bảng product_variants
                 if ($variant->name) {
                     $variantData['title'] = $variant->name;
+                } else {
+                    // Nếu không có name, sử dụng art_no hoặc code
+                    $variantData['title'] = $variant->art_no ?? $product->code;
                 }
 
                 // Thêm hình ảnh variant nếu có
@@ -173,28 +213,35 @@ class SyncProductToShopifyJob implements ShouldQueue
                     }
                 }
 
-                // Xử lý stock status
+                // Xử lý stock status từ bảng product_variants
                 if ($variant->stock_status) {
                     switch (strtolower($variant->stock_status)) {
                         case 'skladem':
-                            $variantData['inventoryQuantity'] = 10; // Có sẵn
+                            $variantData['inventoryQuantity'] = 50; // Có sẵn - tăng số lượng
                             break;
                         case 'akce':
-                            $variantData['inventoryQuantity'] = 5; // Khuyến mãi
+                            $variantData['inventoryQuantity'] = 25; // Khuyến mãi - tăng số lượng
+                            break;
+                        case 'na objednavku':
+                            $variantData['inventoryQuantity'] = 0; // Đặt hàng
                             break;
                         default:
-                            $variantData['inventoryQuantity'] = 0;
+                            $variantData['inventoryQuantity'] = 10; // Mặc định có ít nhất 10
                     }
+                } else {
+                    // Nếu không có stock_status, mặc định có inventory
+                    $variantData['inventoryQuantity'] = 10;
                 }
 
                 $variants[] = $variantData;
             }
         } else {
-            // Tạo variant mặc định
+            // Tạo variant mặc định nếu không có variants
             $variants[] = [
                 'price' => $product->price,
                 'sku' => $product->code,
-                'inventoryQuantity' => 0,
+                'title' => $product->title,
+                'inventoryQuantity' => 10,
                 'weight' => 0,
                 'weightUnit' => 'KILOGRAMS'
             ];
@@ -219,22 +266,58 @@ class SyncProductToShopifyJob implements ShouldQueue
 
         // Đặc điểm từ Product
         if ($product->indicators) {
-            $description .= "<h3>Đặc điểm chính</h3><p>{$product->indicators}</p>";
+            $indicators = json_decode($product->indicators, true);
+            if (is_array($indicators)) {
+                $description .= "<h3>Main Features</h3><ul>";
+                foreach ($indicators as $indicator) {
+                    $description .= "<li>" . htmlspecialchars($indicator) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Main Features</h3><p>{$product->indicators}</p>";
+            }
         }
 
         // Đặc điểm chi tiết từ ProductDetail
         if ($product->productDetail && $product->productDetail->detail_indicators) {
-            $description .= "<h3>Đặc điểm chi tiết</h3><p>{$product->productDetail->detail_indicators}</p>";
+            $indicators = json_decode($product->productDetail->detail_indicators, true);
+            if (is_array($indicators)) {
+                $description .= "<h3>Detailed Features</h3><ul>";
+                foreach ($indicators as $indicator) {
+                    $description .= "<li>" . htmlspecialchars($indicator) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Detailed Features</h3><p>{$product->productDetail->detail_indicators}</p>";
+            }
         }
 
         // Thông số kỹ thuật
         if ($product->productDetail && $product->productDetail->specs) {
-            $description .= "<h3>Thông số kỹ thuật</h3><div>{$product->productDetail->specs}</div>";
+            $specs = json_decode($product->productDetail->specs, true);
+            if (is_array($specs)) {
+                $description .= "<h3>Technical Specifications</h3><table class='specs-table'>";
+                foreach ($specs as $key => $value) {
+                    $description .= "<tr><td><strong>" . htmlspecialchars($key) . "</strong></td><td>" . htmlspecialchars($value) . "</td></tr>";
+                }
+                $description .= "</table>";
+            } else {
+                $description .= "<h3>Technical Specifications</h3><div>{$product->productDetail->specs}</div>";
+            }
         }
 
         // Tính năng chính
         if ($product->productDetail && $product->productDetail->key_features) {
-            $description .= "<h3>Tính năng chính</h3><div>{$product->productDetail->key_features}</div>";
+            $features = json_decode($product->productDetail->key_features, true);
+            if (is_array($features)) {
+                $description .= "<h3>Key Features</h3><ul>";
+                foreach ($features as $feature) {
+                    $description .= "<li>" . htmlspecialchars($feature) . "</li>";
+                }
+                $description .= "</ul>";
+            } else {
+                $description .= "<h3>Key Features</h3><div>{$product->productDetail->key_features}</div>";
+            }
         }
 
         // Meta description
@@ -353,6 +436,7 @@ class SyncProductToShopifyJob implements ShouldQueue
     private function validateImageUrl(string $url): bool
     {
         $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
-        return in_array($ext, ['jpg','jpeg','png','gif']);
+        return in_array($ext, ['jpg','jpeg','png','gif','webp']);
     }
+
 } 

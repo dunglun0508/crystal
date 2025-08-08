@@ -32,24 +32,23 @@ class SyncAllCategoriesToShopifyJob implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info("Bắt đầu đồng bộ tất cả categories lên Shopify");
-
-            $categories = Category::orderBy('level')->orderBy('title')->get();
+            \Log::info("Start sync all categories");
+            
+            $categories = Category::all();
             $totalCategories = $categories->count();
-
-            Log::info("Tìm thấy {$totalCategories} categories cần đồng bộ");
-
-            // Dispatch jobs cho từng category
+            
+            \Log::info("Found {$totalCategories} categories to sync");
+            
             foreach ($categories as $category) {
                 SyncCategoryToShopifyJob::dispatch($category)
                     ->onQueue('shopify-sync')
-                    ->delay(now()->addSeconds(rand(1, 5))); // Delay ngẫu nhiên để tránh rate limit
+                    ->delay(now()->addSeconds(rand(1, 3))); // Random delay 1-3 seconds
             }
-
-            Log::info("Đã dispatch {$totalCategories} jobs đồng bộ categories");
-
-        } catch (\Exception $e) {
-            Log::error("Lỗi khi dispatch jobs đồng bộ categories: " . $e->getMessage());
+            
+            \Log::info("Dispatched {$totalCategories} category sync jobs");
+            
+        } catch (\Throwable $e) {
+            \Log::error("Failed to dispatch category sync jobs: " . $e->getMessage());
             throw $e;
         }
     }

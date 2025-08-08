@@ -33,35 +33,72 @@ class SyncCategoryToShopifyJob implements ShouldQueue
     public function handle(ShopifyService $shopifyService)
     {
         try {
-            Log::info("Bắt đầu đồng bộ category '{$this->category->title}' lên Shopify");
-
-            // Kiểm tra xem danh mục đã tồn tại trên Shopify chưa
-            $existingCollection = $shopifyService->findCollectionByHandle($this->category->slug);
+            \Log::info("Sync category: {$this->category->title}");
             
-            $collectionData = $this->prepareCategoryData($this->category);
+            $categoryData = $this->prepareCategoryData($this->category);
+            \Log::info("Checking collection with handle: {$categoryData['handle']}");
             
-            if ($existingCollection['success'] && isset($existingCollection['data']['collectionByHandle'])) {
-                // Cập nhật collection đã tồn tại
-                $result = $shopifyService->updateCollection(
-                    $existingCollection['data']['collectionByHandle']['id'], 
-                    $collectionData
-                );
-                $action = 'cập nhật';
+            // Kiểm tra collection tồn tại với retry logic
+            $existingCollection = null;
+            $collectionId = null;
+            $maxRetries = 3;
+            
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $existingCollectionResult = $shopifyService->findCollectionByHandle($categoryData['handle']);
+                \Log::info("Collection check attempt {$attempt} result: " . json_encode($existingCollectionResult));
+                
+                if ($existingCollectionResult && ($existingCollectionResult['success'] ?? false)) {
+                    $collectionData = $existingCollectionResult['data']['collectionByHandle'] ?? null;
+                    if ($collectionData && isset($collectionData['id'])) {
+                        $existingCollection = $collectionData;
+                        $collectionId = $collectionData['id'];
+                        \Log::info("Found existing collection: {$collectionData['title']} (ID: {$collectionData['id']})");
+                        break;
+                    } else {
+                        \Log::info("Collection not found in Shopify (handle: {$categoryData['handle']})");
+                        break;
+                    }
+                } else {
+                    \Log::warning("Failed to check collection existence (attempt {$attempt}): " . json_encode($existingCollectionResult));
+                    if ($attempt < $maxRetries) {
+                        sleep(2); // Đợi 2 giây trước khi thử lại
+                    }
+                }
+            }
+            
+            // Nếu tìm thấy collection đã tồn tại, chỉ cập nhật thông tin
+            if ($existingCollection) {
+                \Log::info("Collection đã tồn tại, cập nhật thông tin: {$this->category->title} (ID: {$existingCollection['id']})");
+                $result = $shopifyService->updateCollection($existingCollection['id'], $categoryData);
+                
+                if ($result && ($result['success'] ?? false)) {
+                    \Log::info("Collection updated successfully: {$this->category->title}");
+                    $collectionId = $existingCollection['id'];
+                } else {
+                    \Log::error("Failed to update collection: " . json_encode($result));
+                    throw new \Exception("Failed to update collection");
+                }
             } else {
-                // Tạo collection mới
-                $result = $shopifyService->createCollection($collectionData);
-                $action = 'tạo mới';
+                // Chỉ tạo mới khi thực sự không tìm thấy collection
+                \Log::info("Tạo collection mới: {$this->category->title} (Handle: {$categoryData['handle']})");
+                $result = $shopifyService->createCollection($categoryData);
+                
+                if ($result && ($result['success'] ?? false) && isset($result['data']['collectionCreate']['collection']['id'])) {
+                    $collectionId = $result['data']['collectionCreate']['collection']['id'];
+                    \Log::info("Created collection with ID: {$collectionId}");
+                } else {
+                    \Log::error("Failed to create collection: " . json_encode($result));
+                    throw new \Exception("Failed to create collection: " . json_encode($result));
+                }
             }
 
-            if ($result['success']) {
-                Log::info("Đã {$action} danh mục '{$this->category->title}' trên Shopify thành công");
-            } else {
-                Log::error("Lỗi {$action} danh mục '{$this->category->title}' trên Shopify: " . $result['error']);
-                throw new \Exception($result['error']);
+            // Thêm ảnh cho collection nếu có và chưa có ảnh
+            if ($collectionId) {
+                $this->addCollectionImage($shopifyService, $collectionId);
             }
-
-        } catch (\Exception $e) {
-            Log::error("Lỗi đồng bộ danh mục '{$this->category->title}' lên Shopify: " . $e->getMessage());
+            
+        } catch (\Throwable $e) {
+            \Log::error("Sync category failed {$this->category->title}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -87,7 +124,7 @@ class SyncCategoryToShopifyJob implements ShouldQueue
 
         return [
             'title' => $category->title,
-            'handle' => $category->slug,
+            'handle' => $this->generateShopifyCollectionHandle($category),
             'descriptionHtml' => $description,
             'seo' => [
                 'title' => $category->title,
@@ -97,10 +134,106 @@ class SyncCategoryToShopifyJob implements ShouldQueue
     }
 
     /**
+     * Tạo collection handle theo format Shopify - đồng nhất với SyncProductToShopifyJob
+     */
+    private function generateShopifyCollectionHandle($category)
+    {
+        $handle = '';
+        
+        // Nếu có parent category
+        if ($category->parent) {
+            // Format: choose-crystal-chandeliers-by-type-{parent}-{child}
+            $parentTitle = str_replace(' ', '-', strtolower($category->parent->title));
+            $childTitle = str_replace(' ', '-', strtolower($category->title));
+            $handle = 'choose-crystal-chandeliers-by-type-' . $parentTitle . '-' . $childTitle;
+        } else {
+            // Nếu không có parent, dùng title trực tiếp
+            $handle = str_replace(' ', '-', strtolower($category->title));
+        }
+        
+        // Clean up handle
+        $handle = preg_replace('/[^a-z0-9-]/', '', $handle);
+        $handle = preg_replace('/-+/', '-', $handle);
+        $handle = trim($handle, '-');
+        
+        \Log::info("Generated collection handle: " . $handle);
+        
+        return $handle;
+    }
+
+    /**
+     * Thêm ảnh cho collection
+     */
+    private function addCollectionImage(ShopifyService $shopifyService, $collectionId)
+    {
+        // Chỉ thêm ảnh nếu category có ảnh và chưa có ảnh
+        if (!empty($this->category->image)) {
+            \Log::info("Processing image for category: {$this->category->title}");
+            \Log::info("Image path: {$this->category->image}");
+            
+            $imageUrl = $this->toPublicUrl($this->category->image);
+            \Log::info("Converted to public URL: {$imageUrl}");
+            
+            if ($imageUrl && $this->validateImageUrl($imageUrl)) {
+                \Log::info("Image URL is valid, uploading to collection ID: {$collectionId}");
+                $uploadResult = $shopifyService->addCollectionImage($collectionId, $imageUrl, $this->category->title);
+                
+                if ($uploadResult) {
+                    \Log::info("Image uploaded successfully for: {$this->category->title}");
+                } else {
+                    \Log::warning("Failed to upload image for: {$this->category->title} (có thể đã tồn tại)");
+                }
+            } else {
+                \Log::warning("Invalid image URL for category: {$this->category->title} - {$imageUrl}");
+            }
+        } else {
+            \Log::info("No image found for category: {$this->category->title}");
+        }
+    }
+
+    /**
+     * Chuyển local path sang public HTTP URL để Shopify có thể tải ảnh
+     */
+    private function toPublicUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+        // Nếu đã là URL tuyệt đối
+        if (preg_match('#^https?://#i', $path)) {
+            return $this->validateImageUrl($path) ? $path : null;
+        }
+        $normalized = ltrim($path, '/');
+        // Loại bỏ prefix 'public/' vì webroot đã là public
+        if (stripos($normalized, 'public/') === 0) {
+            $normalized = substr($normalized, 7);
+        }
+        // Xây URL tuyệt đối từ APP_URL, nhưng dùng HTTP thay vì HTTPS để tránh SSL issues
+        $base = rtrim(config('app.url'), '/');
+        // Thay HTTPS thành HTTP cho local development
+        if (strpos($base, 'https://') === 0) {
+            $base = 'http://' . substr($base, 8);
+        }
+        // Thay domain bằng IP để Shopify có thể truy cập
+        $base = str_replace('crystallocal.com', '192.168.1.167', $base);
+        $url = $base . '/' . $normalized;
+        return $this->validateImageUrl($url) ? $url : null;
+    }
+
+    /**
+     * Chỉ chấp nhận ảnh có đuôi phổ biến để tránh lỗi tải
+     */
+    private function validateImageUrl(string $url): bool
+    {
+        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+        return in_array($ext, ['jpg','jpeg','png','gif','webp']);
+    }
+
+    /**
      * Handle a job failure.
      */
     public function failed(\Throwable $exception)
     {
-        Log::error("Job đồng bộ category '{$this->category->title}' thất bại: " . $exception->getMessage());
+        Log::error("Job sync category '{$this->category->title}' failed: " . $exception->getMessage());
     }
 } 

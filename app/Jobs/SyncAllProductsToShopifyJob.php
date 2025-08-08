@@ -32,24 +32,23 @@ class SyncAllProductsToShopifyJob implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info("Bắt đầu đồng bộ tất cả products lên Shopify");
-
+            \Log::info("Start sync all products");
+            
             $products = Product::with(['category', 'variants', 'productDetail'])->get();
             $totalProducts = $products->count();
-
-            Log::info("Tìm thấy {$totalProducts} products cần đồng bộ");
-
-            // Dispatch jobs cho từng product
+            
+            \Log::info("Found {$totalProducts} products to sync");
+            
             foreach ($products as $product) {
                 SyncProductToShopifyJob::dispatch($product)
                     ->onQueue('shopify-sync')
-                    ->delay(now()->addSeconds(rand(1, 5))); // Delay ngẫu nhiên để tránh rate limit
+                    ->delay(now()->addSeconds(rand(1, 3))); // Random delay 1-3 seconds
             }
-
-            Log::info("Đã dispatch {$totalProducts} jobs đồng bộ products");
-
-        } catch (\Exception $e) {
-            Log::error("Lỗi khi dispatch jobs đồng bộ products: " . $e->getMessage());
+            
+            \Log::info("Dispatched {$totalProducts} product sync jobs");
+            
+        } catch (\Throwable $e) {
+            \Log::error("Failed to dispatch product sync jobs: " . $e->getMessage());
             throw $e;
         }
     }
