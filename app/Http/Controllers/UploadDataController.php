@@ -6,6 +6,11 @@ use Illuminate\Http\Request;
 use App\Services\ShopifyService;
 use App\Models\Category;
 use App\Models\Product;
+use App\Jobs\SyncCategoryToShopifyJob;
+use App\Jobs\SyncProductToShopifyJob;
+use App\Jobs\SyncAllCategoriesToShopifyJob;
+use App\Jobs\SyncAllProductsToShopifyJob;
+use App\Jobs\SyncProductsByCategoryJob;
 use Illuminate\Support\Facades\Log;
 
 class UploadDataController extends Controller
@@ -50,198 +55,178 @@ class UploadDataController extends Controller
     }
 
     /**
-     * Đồng bộ danh mục lên Shopify
+     * Đồng bộ danh mục lên Shopify (Dispatch Job)
      */
     public function syncCategoryToShopify(Category $category)
     {
         try {
-            // Kiểm tra xem danh mục đã tồn tại trên Shopify chưa
-            $existingCollection = $this->shopifyService->findCollectionByHandle($category->slug);
-            
-            $collectionData = $this->prepareCategoryData($category);
-            
-            if ($existingCollection['success'] && isset($existingCollection['data']['collectionByHandle'])) {
-                // Cập nhật collection đã tồn tại
-                $result = $this->shopifyService->updateCollection(
-                    $existingCollection['data']['collectionByHandle']['id'], 
-                    $collectionData
-                );
-                $action = 'cập nhật';
-            } else {
-                // Tạo collection mới
-                $result = $this->shopifyService->createCollection($collectionData);
-                $action = 'tạo mới';
-            }
+            // Dispatch job để đồng bộ category
+            SyncCategoryToShopifyJob::dispatch($category)
+                ->onQueue('shopify-sync');
 
-            if ($result['success']) {
-                Log::info("Đã {$action} danh mục '{$category->title}' trên Shopify");
-                return response()->json([
-                    'success' => true,
-                    'message' => "Đã {$action} danh mục '{$category->title}' trên Shopify thành công",
-                    'data' => $result['data']
-                ]);
-            } else {
-                Log::error("Lỗi {$action} danh mục '{$category->title}' trên Shopify: " . $result['error']);
-                return response()->json([
-                    'success' => false,
-                    'message' => "Lỗi {$action} danh mục trên Shopify",
-                    'error' => $result['error']
-                ], 500);
-            }
+            Log::info("Đã dispatch job đồng bộ category '{$category->title}'");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã gửi yêu cầu đồng bộ danh mục '{$category->title}' lên Shopify. Job đang chạy ngầm.",
+                'category' => [
+                    'title' => $category->title,
+                    'level' => $category->level,
+                    'code' => $category->code
+                ]
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Lỗi đồng bộ danh mục lên Shopify: ' . $e->getMessage());
+            Log::error('Lỗi dispatch job đồng bộ danh mục: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi đồng bộ danh mục lên Shopify',
+                'message' => 'Lỗi gửi yêu cầu đồng bộ danh mục',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Đồng bộ sản phẩm lên Shopify
+     * Đồng bộ sản phẩm lên Shopify (Dispatch Job)
      */
     public function syncProductToShopify(Product $product)
     {
         try {
-            // Kiểm tra xem sản phẩm đã tồn tại trên Shopify chưa
-            $existingProduct = $this->shopifyService->findProductByHandle($product->slug);
-            
-            $productData = $this->prepareProductData($product);
-            
-            if ($existingProduct['success'] && isset($existingProduct['data']['productByHandle'])) {
-                // Cập nhật product đã tồn tại
-                $result = $this->shopifyService->updateProduct(
-                    $existingProduct['data']['productByHandle']['id'], 
-                    $productData
-                );
-                $action = 'cập nhật';
-            } else {
-                // Tạo product mới
-                $result = $this->shopifyService->createProduct($productData);
-                $action = 'tạo mới';
-            }
+            // Dispatch job để đồng bộ product
+            SyncProductToShopifyJob::dispatch($product)
+                ->onQueue('shopify-sync');
 
-            if ($result['success']) {
-                Log::info("Đã {$action} sản phẩm '{$product->title}' trên Shopify");
-                return response()->json([
-                    'success' => true,
-                    'message' => "Đã {$action} sản phẩm '{$product->title}' trên Shopify thành công",
-                    'data' => $result['data']
-                ]);
-            } else {
-                Log::error("Lỗi {$action} sản phẩm '{$product->title}' trên Shopify: " . $result['error']);
-                return response()->json([
-                    'success' => false,
-                    'message' => "Lỗi {$action} sản phẩm trên Shopify",
-                    'error' => $result['error']
-                ], 500);
-            }
+            Log::info("Đã dispatch job đồng bộ product '{$product->title}'");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã gửi yêu cầu đồng bộ sản phẩm '{$product->title}' lên Shopify. Job đang chạy ngầm.",
+                'product' => [
+                    'title' => $product->title,
+                    'code' => $product->code,
+                    'category' => $product->category ? $product->category->title : 'N/A'
+                ]
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Lỗi đồng bộ sản phẩm lên Shopify: ' . $e->getMessage());
+            Log::error('Lỗi dispatch job đồng bộ sản phẩm: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi đồng bộ sản phẩm lên Shopify',
+                'message' => 'Lỗi gửi yêu cầu đồng bộ sản phẩm',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Đồng bộ tất cả danh mục lên Shopify
+     * Đồng bộ tất cả danh mục lên Shopify (Dispatch Job)
      */
     public function syncAllCategoriesToShopify()
     {
         try {
-            $categories = Category::all();
-            $results = [];
-            $successCount = 0;
-            $errorCount = 0;
+            $totalCategories = Category::count();
 
-            foreach ($categories as $category) {
-                $response = $this->syncCategoryToShopify($category);
-                $responseData = json_decode($response->getContent(), true);
-                
-                if ($responseData['success']) {
-                    $successCount++;
-                } else {
-                    $errorCount++;
-                }
-                
-                $results[] = [
-                    'category' => $category->title,
-                    'success' => $responseData['success'],
-                    'message' => $responseData['message']
-                ];
-            }
+            // Dispatch job để đồng bộ tất cả categories
+            SyncAllCategoriesToShopifyJob::dispatch()
+                ->onQueue('shopify-sync');
+
+            Log::info("Đã dispatch job đồng bộ tất cả categories ({$totalCategories} categories)");
 
             return response()->json([
                 'success' => true,
-                'message' => "Đồng bộ hoàn tất: {$successCount} thành công, {$errorCount} lỗi",
-                'results' => $results,
+                'message' => "Đã gửi yêu cầu đồng bộ tất cả danh mục lên Shopify. Job đang chạy ngầm.",
                 'summary' => [
-                    'total' => count($categories),
-                    'success' => $successCount,
-                    'error' => $errorCount
+                    'total_categories' => $totalCategories,
+                    'status' => 'Job dispatched',
+                    'queue' => 'shopify-sync'
                 ]
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Lỗi đồng bộ tất cả danh mục: ' . $e->getMessage());
+            Log::error('Lỗi dispatch job đồng bộ tất cả danh mục: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi đồng bộ tất cả danh mục',
+                'message' => 'Lỗi gửi yêu cầu đồng bộ tất cả danh mục',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Đồng bộ tất cả sản phẩm lên Shopify
+     * Đồng bộ tất cả sản phẩm lên Shopify (Dispatch Job)
      */
     public function syncAllProductsToShopify()
     {
         try {
-            $products = Product::with(['category', 'variants', 'productDetail'])->get();
-            $results = [];
-            $successCount = 0;
-            $errorCount = 0;
+            $totalProducts = Product::count();
 
-            foreach ($products as $product) {
-                $response = $this->syncProductToShopify($product);
-                $responseData = json_decode($response->getContent(), true);
-                
-                if ($responseData['success']) {
-                    $successCount++;
-                } else {
-                    $errorCount++;
-                }
-                
-                $results[] = [
-                    'product' => $product->title,
-                    'success' => $responseData['success'],
-                    'message' => $responseData['message']
-                ];
-            }
+            // Dispatch job để đồng bộ tất cả products
+            SyncAllProductsToShopifyJob::dispatch()
+                ->onQueue('shopify-sync');
+
+            Log::info("Đã dispatch job đồng bộ tất cả products ({$totalProducts} products)");
 
             return response()->json([
                 'success' => true,
-                'message' => "Đồng bộ hoàn tất: {$successCount} thành công, {$errorCount} lỗi",
-                'results' => $results,
+                'message' => "Đã gửi yêu cầu đồng bộ tất cả sản phẩm lên Shopify. Job đang chạy ngầm.",
                 'summary' => [
-                    'total' => count($products),
-                    'success' => $successCount,
-                    'error' => $errorCount
+                    'total_products' => $totalProducts,
+                    'status' => 'Job dispatched',
+                    'queue' => 'shopify-sync'
                 ]
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Lỗi đồng bộ tất cả sản phẩm: ' . $e->getMessage());
+            Log::error('Lỗi dispatch job đồng bộ tất cả sản phẩm: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi đồng bộ tất cả sản phẩm',
+                'message' => 'Lỗi gửi yêu cầu đồng bộ tất cả sản phẩm',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Đồng bộ sản phẩm theo danh mục (Dispatch Job)
+     */
+    public function syncProductsByCategory(Category $category)
+    {
+        try {
+            $totalProducts = Product::where('category_code', $category->code)->count();
+
+            if ($totalProducts === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Không tìm thấy sản phẩm nào trong danh mục '{$category->title}'"
+                ], 404);
+            }
+
+            // Dispatch job để đồng bộ products theo category
+            SyncProductsByCategoryJob::dispatch($category)
+                ->onQueue('shopify-sync');
+
+            Log::info("Đã dispatch job đồng bộ products cho category '{$category->title}' ({$totalProducts} products)");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã gửi yêu cầu đồng bộ sản phẩm danh mục '{$category->title}' lên Shopify. Job đang chạy ngầm.",
+                'category' => [
+                    'title' => $category->title,
+                    'level' => $category->level,
+                    'code' => $category->code
+                ],
+                'summary' => [
+                    'total_products' => $totalProducts,
+                    'status' => 'Job dispatched',
+                    'queue' => 'shopify-sync'
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Lỗi dispatch job đồng bộ sản phẩm danh mục '{$category->title}': " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => "Lỗi gửi yêu cầu đồng bộ sản phẩm danh mục '{$category->title}'",
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -252,13 +237,27 @@ class UploadDataController extends Controller
      */
     private function prepareCategoryData(Category $category)
     {
+        $description = "<h2>{$category->title}</h2>";
+        
+        // Thêm thông tin level
+        $description .= "<p><strong>Level:</strong> {$category->level}</p>";
+        
+        // Thêm thông tin parent nếu có
+        if ($category->parent) {
+            $description .= "<p><strong>Danh mục cha:</strong> {$category->parent->title}</p>";
+        }
+        
+        // Thêm số lượng sản phẩm
+        $productsCount = $category->products->count();
+        $description .= "<p><strong>Số sản phẩm:</strong> {$productsCount}</p>";
+
         return [
             'title' => $category->title,
             'handle' => $category->slug,
-            'descriptionHtml' => "<p>{$category->title}</p>",
+            'descriptionHtml' => $description,
             'seo' => [
                 'title' => $category->title,
-                'description' => $category->title
+                'description' => "Danh mục {$category->title} - Level {$category->level}"
             ]
         ];
     }
@@ -281,34 +280,81 @@ class UploadDataController extends Controller
             ]
         ];
 
-        // Thêm hình ảnh nếu có
+        // Thêm hình ảnh
+        $images = [];
+        
+        // Hình ảnh chính
         if ($product->image) {
-            $productData['images'] = [
-                [
-                    'src' => url($product->image),
-                    'altText' => $product->title
-                ]
+            $images[] = [
+                'src' => url($product->image),
+                'altText' => $product->title,
+                'position' => 1
             ];
+        }
+
+        // Gallery từ ProductDetail
+        if ($product->productDetail && $product->productDetail->gallery_local) {
+            $galleryImages = json_decode($product->productDetail->gallery_local, true);
+            if (is_array($galleryImages)) {
+                foreach ($galleryImages as $index => $imagePath) {
+                    $images[] = [
+                        'src' => url($imagePath),
+                        'altText' => $product->title . ' - Hình ' . ($index + 2),
+                        'position' => $index + 2
+                    ];
+                }
+            }
+        }
+
+        if (!empty($images)) {
+            $productData['images'] = $images;
         }
 
         // Thêm variants
         $variants = [];
         if ($product->variants->count() > 0) {
             foreach ($product->variants as $variant) {
-                $variants[] = [
+                $variantData = [
                     'price' => $variant->price ?? $product->price,
-                    'compareAtPrice' => $variant->compare_at_price ?? null,
-                    'sku' => $variant->sku ?? $product->code,
-                    'inventoryQuantity' => $variant->inventory_quantity ?? 0,
-                    'weight' => $variant->weight ?? 0,
+                    'sku' => $variant->art_no ?? $product->code,
+                    'inventoryQuantity' => 0,
+                    'weight' => 0,
                     'weightUnit' => 'KILOGRAMS'
                 ];
+
+                // Thêm tên variant nếu có
+                if ($variant->name) {
+                    $variantData['title'] = $variant->name;
+                }
+
+                // Thêm hình ảnh variant nếu có
+                if ($variant->variant_image) {
+                    $variantData['image'] = [
+                        'src' => url($variant->variant_image),
+                        'altText' => $variant->name ?? $product->title
+                    ];
+                }
+
+                // Xử lý stock status
+                if ($variant->stock_status) {
+                    switch (strtolower($variant->stock_status)) {
+                        case 'skladem':
+                            $variantData['inventoryQuantity'] = 10; // Có sẵn
+                            break;
+                        case 'akce':
+                            $variantData['inventoryQuantity'] = 5; // Khuyến mãi
+                            break;
+                        default:
+                            $variantData['inventoryQuantity'] = 0;
+                    }
+                }
+
+                $variants[] = $variantData;
             }
         } else {
             // Tạo variant mặc định
             $variants[] = [
                 'price' => $product->price,
-                'compareAtPrice' => $product->discount ? $product->price * (1 + $product->discount / 100) : null,
                 'sku' => $product->code,
                 'inventoryQuantity' => 0,
                 'weight' => 0,
@@ -328,12 +374,34 @@ class UploadDataController extends Controller
     {
         $description = "<h2>{$product->title}</h2>";
         
-        if ($product->productDetail) {
-            $description .= "<p>{$product->productDetail->description}</p>";
+        // Mô tả dài từ ProductDetail
+        if ($product->productDetail && $product->productDetail->long_description) {
+            $description .= "<div class='product-description'>{$product->productDetail->long_description}</div>";
         }
 
+        // Đặc điểm từ Product
         if ($product->indicators) {
-            $description .= "<p><strong>Đặc điểm:</strong> {$product->indicators}</p>";
+            $description .= "<h3>Đặc điểm chính</h3><p>{$product->indicators}</p>";
+        }
+
+        // Đặc điểm chi tiết từ ProductDetail
+        if ($product->productDetail && $product->productDetail->detail_indicators) {
+            $description .= "<h3>Đặc điểm chi tiết</h3><p>{$product->productDetail->detail_indicators}</p>";
+        }
+
+        // Thông số kỹ thuật
+        if ($product->productDetail && $product->productDetail->specs) {
+            $description .= "<h3>Thông số kỹ thuật</h3><div>{$product->productDetail->specs}</div>";
+        }
+
+        // Tính năng chính
+        if ($product->productDetail && $product->productDetail->key_features) {
+            $description .= "<h3>Tính năng chính</h3><div>{$product->productDetail->key_features}</div>";
+        }
+
+        // Meta description
+        if ($product->productDetail && $product->productDetail->meta_description) {
+            $description .= "<div class='meta-info'><p><strong>Thông tin bổ sung:</strong> {$product->productDetail->meta_description}</p></div>";
         }
 
         return $description;
@@ -346,13 +414,32 @@ class UploadDataController extends Controller
     {
         $tags = [];
 
+        // Category
         if ($product->category) {
             $tags[] = $product->category->title;
         }
 
+        // Discount
         if ($product->discount) {
             $tags[] = 'Khuyến mãi';
         }
+
+        // Currency
+        if ($product->currency) {
+            $tags[] = $product->currency;
+        }
+
+        // Stock status từ variants
+        if ($product->variants->count() > 0) {
+            foreach ($product->variants as $variant) {
+                if ($variant->stock_status) {
+                    $tags[] = $variant->stock_status;
+                }
+            }
+        }
+
+        // Loại bỏ duplicates và empty values
+        $tags = array_filter(array_unique($tags));
 
         return implode(', ', $tags);
     }

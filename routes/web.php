@@ -34,4 +34,5 @@ Route::prefix('shopify')->group(function () {
     Route::post('/sync-product/{product}', [UploadDataController::class, 'syncProductToShopify'])->name('shopify.sync-product');
     Route::get('/sync-all-categories', [UploadDataController::class, 'syncAllCategoriesToShopify'])->name('shopify.sync-all-categories');
     Route::get('/sync-all-products', [UploadDataController::class, 'syncAllProductsToShopify'])->name('shopify.sync-all-products');
+    Route::get('/sync-products-by-category/{category}', [UploadDataController::class, 'syncProductsByCategory'])->name('shopify.sync-products-by-category');
 });
