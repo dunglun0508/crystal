@@ -10,6 +10,12 @@ class ShopifyService
     private $shopifyToken;
     private $shopifyApiVersion;
     protected $graphqlEndpoint;
+    private $throttleStatus = [
+        'currentlyAvailable' => 1000,
+        'maximumAvailable' => 1000,
+        'restoreRate' => 50
+    ];
+    private $lastRequestTime = 0;
 
     public function __construct()
     {
@@ -1120,11 +1126,14 @@ class ShopifyService
     }
 
     /**
-     * Thực hiện GraphQL request
+     * Thực hiện GraphQL request với smart cost limiting
      */
     public function makeGraphQLRequest($query, $variables = [])
     {
         try {
+            // Smart cost limiting dựa trên throttleStatus
+            $this->enforceSmartCostLimit();
+            
             $response = Http::withHeaders([
                 'X-Shopify-Access-Token' => $this->shopifyToken,
                 'Content-Type' => 'application/json',
@@ -1136,6 +1145,9 @@ class ShopifyService
 
             if ($response->successful()) {
                 $data = $response->json();
+                
+                // Cập nhật throttle status từ response
+                $this->updateThrottleStatus($data);
                 
                 // Kiểm tra lỗi từ Shopify
                 if (isset($data['errors'])) {
@@ -1174,6 +1186,58 @@ class ShopifyService
                 'success' => false,
                 'error' => 'Lỗi kết nối: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Smart cost limiting dựa trên throttleStatus
+     */
+    private function enforceSmartCostLimit()
+    {
+        $now = time();
+        $timeDiff = $now - $this->lastRequestTime;
+        
+        // Tính cost đã được restore
+        $restoredCost = $timeDiff * $this->throttleStatus['restoreRate'];
+        $this->throttleStatus['currentlyAvailable'] = min(
+            $this->throttleStatus['maximumAvailable'],
+            $this->throttleStatus['currentlyAvailable'] + $restoredCost
+        );
+        
+        // Nếu cost sắp cạn (dưới 100), đợi
+        if ($this->throttleStatus['currentlyAvailable'] < 100) {
+            $neededCost = 100 - $this->throttleStatus['currentlyAvailable'];
+            $sleepTime = ceil($neededCost / $this->throttleStatus['restoreRate']);
+            
+            \Log::info("Cost low ({$this->throttleStatus['currentlyAvailable']}), sleeping for {$sleepTime}s");
+            sleep($sleepTime);
+            
+            // Cập nhật sau khi sleep
+            $this->throttleStatus['currentlyAvailable'] = min(
+                $this->throttleStatus['maximumAvailable'],
+                $this->throttleStatus['currentlyAvailable'] + ($sleepTime * $this->throttleStatus['restoreRate'])
+            );
+        }
+        
+        $this->lastRequestTime = $now;
+    }
+
+    /**
+     * Cập nhật throttle status từ response
+     */
+    private function updateThrottleStatus($data)
+    {
+        if (isset($data['extensions']['cost']['throttleStatus'])) {
+            $throttle = $data['extensions']['cost']['throttleStatus'];
+            
+            $this->throttleStatus['currentlyAvailable'] = $throttle['currentlyAvailable'] ?? $this->throttleStatus['currentlyAvailable'];
+            $this->throttleStatus['maximumAvailable'] = $throttle['maximumAvailable'] ?? $this->throttleStatus['maximumAvailable'];
+            $this->throttleStatus['restoreRate'] = $throttle['restoreRate'] ?? $this->throttleStatus['restoreRate'];
+            
+            $requestedCost = $data['extensions']['cost']['requestedQueryCost'] ?? 0;
+            $this->throttleStatus['currentlyAvailable'] -= $requestedCost;
+            
+            \Log::debug("Cost used: {$requestedCost}, Available: {$this->throttleStatus['currentlyAvailable']}, Restore rate: {$this->throttleStatus['restoreRate']}/s");
         }
     }
 }

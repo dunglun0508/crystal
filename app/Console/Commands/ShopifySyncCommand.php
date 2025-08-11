@@ -20,7 +20,7 @@ class ShopifySyncCommand extends Command
      * @var string
      */
     protected $signature = 'shopify:sync 
-                            {type : Type of sync (categories|products|all|category-products|delete-all-products|count-products|update-existing|update-category-images|list-collections|check-duplicates|check-sync-status|test-product|list-locations|publish-products)}
+                            {type : Type of sync (categories|products|all|category-products|delete-all-products|count-products|count-published|update-existing|update-category-images|list-collections|check-duplicates|check-sync-status|test-product|list-locations|publish-products)}
                             {--category= : Category code for category-products sync}
                             {--product= : Product code for test-product sync}';
 
@@ -88,6 +88,9 @@ class ShopifySyncCommand extends Command
             case 'check-sync-status':
                 $this->checkSyncStatus();
                 break;
+            case 'count-published':
+                $this->countPublishedProducts();
+                break;
             case 'test-product':
                 $this->testProductSync();
                 break;
@@ -97,6 +100,7 @@ class ShopifySyncCommand extends Command
             case 'publish-products':
                 $this->publishProducts();
                 break;
+
             default:
                 $this->error("Invalid sync type: {$type}");
                 $this->info("Available types: categories, products, all, category-products, update-existing, delete-all-products, count-products, update-category-images, list-collections, check-duplicates, check-sync-status, test-product, list-locations, publish-products");
@@ -659,19 +663,13 @@ class ShopifySyncCommand extends Command
      */
     public function publishProducts()
     {
-        $this->info('Đang publish sản phẩm lên Online Store...');
-        
+        $this->info('Dispatching queued publish for all products...');
         try {
-            // 1. Lấy publicationId của Online Store
-            $publicationId = $this->getOnlineStorePublicationId();
-            $this->info("Tìm thấy Online Store publicationId: {$publicationId}");
-            
-            // 2. Publish tất cả products
-            $this->publishAllProducts($publicationId);
-            
-        } catch (\Exception $e) {
+            \App\Jobs\DispatchPublishProductsJob::dispatch()->onQueue('shopify-sync');
+            $this->info('Queued publish job dispatched. Start workers with: php artisan queue:work --queue=shopify-sync');
+        } catch (\Throwable $e) {
             $this->error('Lỗi: ' . $e->getMessage());
-            \Log::error('Publish products error: ' . $e->getMessage());
+            \Log::error('Dispatch publish queued error: ' . $e->getMessage());
         }
     }
     
@@ -829,4 +827,58 @@ class ShopifySyncCommand extends Command
         }
         return empty($userErrors);
     }
+
+    /**
+     * Đếm số lượng products đã publish lên Online Store
+     */
+    private function countPublishedProducts()
+    {
+        $this->info('Đang đếm số sản phẩm đã publish...');
+        
+        try {
+            $publicationId = $this->getOnlineStorePublicationId();
+            $cursor = null;
+            $total = 0; $published = 0; $unpublished = 0;
+            
+            do {
+                $query = '
+                query ($cursor: String, $publicationId: ID!) {
+                  products(first: 250, after: $cursor) {
+                    pageInfo { hasNextPage endCursor }
+                    edges {
+                      node {
+                        id
+                        handle
+                        publishedOnPublication(publicationId: $publicationId)
+                      }
+                    }
+                  }
+                }';
+                
+                $vars = ['publicationId' => $publicationId];
+                if ($cursor) { $vars['cursor'] = $cursor; }
+                
+                $res = $this->shopifyService->makeGraphQLRequest($query, $vars);
+                if (!($res['success'] ?? false)) {
+                    throw new \Exception('Failed to fetch products: ' . json_encode($res));
+                }
+                
+                $page = $res['data']['products'] ?? [];
+                $edges = $page['edges'] ?? [];
+                foreach ($edges as $edge) {
+                    $total++;
+                    if (!empty($edge['node']['publishedOnPublication'])) $published++; else $unpublished++;
+                }
+                
+                $pageInfo = $page['pageInfo'] ?? null;
+                $cursor = $pageInfo['endCursor'] ?? null;
+            } while (!empty($pageInfo['hasNextPage']));
+            
+            $this->info("Tổng: {$total} | Published: {$published} | Unpublished: {$unpublished}");
+        } catch (\Throwable $e) {
+            $this->error('Lỗi: ' . $e->getMessage());
+            \Log::error('Count published error: ' . $e->getMessage());
+        }
+    }
+
 } 

@@ -36,8 +36,7 @@ class DeleteAllProductsJob implements ShouldQueue
             }
             
             if (empty($allProducts)) {
-                \Log::info("No products to delete - stopping workers");
-                $this->stopWorkers();
+                \Log::info("No products to delete");
                 return;
             }
             
