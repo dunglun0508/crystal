@@ -1,13 +1,16 @@
 @extends('layouts.app')
 @section('content')
-    <div class="banner mb-5">
+    <div class="banner mb-xxl-5 mb-3" id="about-us">
         <div class="banner-overlay"></div>
         <div class="banner-content">
             <img src="{{ asset('img/about-us/banner.png') }}" class="banner-logo">
         </div>
+        <div class="d-xxl-none d-block mt-3">
+            <img src="{{ asset('img/service/service-1.png') }}" class="blogs-detail-image">
+        </div>
     </div>
-    <div class="container-fluid py-5 row">
-        <div class="col-8 mx-auto">
+    <div class="container-fluid py-5 px-md-0">
+        <div class="col-xxl-8 col-11 mx-auto">
             <div class="d-flex flex-column gap-4 mb-5">
                 <h3 class="about-us-title">Missie (waarom bestaan we?)</h3>
                 <p class="about-us-content">
@@ -45,7 +48,7 @@
             <hr>
         </div>
     </div>
-    <div class="container-fluid py-5 container-service mb-5" id="booking-service">
+    <div class="container-fluid py-5 px-md-2 container-service mb-xxl-5 mb-2" id="booking-service">
         <div class="container">
             <div class="row row-booking">
                 <div class="col-lg-7 left-booking">

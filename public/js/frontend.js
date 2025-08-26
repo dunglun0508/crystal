@@ -15,6 +15,11 @@
     initialize: function initialize() {
       var that = this;
       that.scrollAbout();
+      that.initSlider('serviceSlider');
+      that.initSlider('partialSlider');
+      that.initSlider('headSpaSlider');
+      that.initSlider('packagesSlider');
+      that.initSlider('otherPackagesSlider');
       // that.checkingFileDownloadReady()
       // that.checkFreeDownload()
       // that.createCountDown()
@@ -93,6 +98,214 @@
       //   }
       // });
     },
+    initSlider: function initSlider(sliderId) {
+      var that = this;
+      var slider = document.getElementById(sliderId);
+      if (!slider) return;
+
+      var track = slider.querySelector('.slider-track');
+      var slides = slider.querySelectorAll('.slider-item');
+      var currentSlide = 0;
+      var isDragging = false;
+      var startPos = 0;
+      var currentTranslate = 0;
+      var prevTranslate = 0;
+      var animationID = 0;
+      var slideWidth = 0;
+      var autoSlideInterval = null;
+      var autoSlideDelay = 3000; // 3 giây
+
+      // Clone slides for infinite loop
+      function cloneSlides() {
+        var originalSlides = Array.from(slides);
+        
+        // Clone first slide and append to end
+        var firstClone = originalSlides[0].cloneNode(true);
+        track.appendChild(firstClone);
+        
+        // Clone last slide and prepend to beginning
+        var lastClone = originalSlides[originalSlides.length - 1].cloneNode(true);
+        track.insertBefore(lastClone, track.firstChild);
+        
+        // Update slides reference
+        slides = track.querySelectorAll('.slider-item');
+        slideWidth = slides[0].offsetWidth;
+        
+        // Set initial position to show first real slide
+        currentSlide = 1;
+        setPositionByIndex();
+      }
+
+      // Initialize slider
+      function initSliderInstance() {
+        cloneSlides();
+        addEventListeners();
+        startAutoSlide();
+      }
+
+      // Update slider position
+      function updateSlider() {
+        var translateX = -currentSlide * slideWidth;
+        track.style.transform = 'translateX(' + translateX + 'px)';
+      }
+
+      // Handle window resize
+      function handleResize() {
+        setPositionByIndex();
+      }
+
+      // Add event listeners
+      function addEventListeners() {
+        // Touch events
+        track.addEventListener('touchstart', touchStart);
+        track.addEventListener('touchmove', touchMove);
+        track.addEventListener('touchend', touchEnd);
+
+        // Mouse events
+        track.addEventListener('mousedown', touchStart);
+        track.addEventListener('mousemove', touchMove);
+        track.addEventListener('mouseup', touchEnd);
+        track.addEventListener('mouseleave', touchEnd);
+
+        // Prevent context menu
+        track.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+        });
+
+        // Window resize
+        window.addEventListener('resize', handleResize);
+      }
+
+      // Touch start
+      function touchStart(event) {
+        isDragging = true;
+        startPos = getPositionX(event);
+        animationID = requestAnimationFrame(animation);
+        track.style.cursor = 'grabbing';
+        stopAutoSlide(); // Dừng auto slide khi user tương tác
+      }
+
+      // Touch move
+      function touchMove(event) {
+        if (!isDragging) return;
+        
+        var currentPosition = getPositionX(event);
+        currentTranslate = prevTranslate + currentPosition - startPos;
+      }
+
+      // Touch end
+      function touchEnd() {
+        isDragging = false;
+        cancelAnimationFrame(animationID);
+        track.style.cursor = 'grab';
+        
+        var movedBy = currentTranslate - prevTranslate;
+        
+        // Determine if slide should change
+        if (Math.abs(movedBy) > 100) {
+          if (movedBy < 0) {
+            // Swipe left - next slide
+            currentSlide++;
+          } else if (movedBy > 0) {
+            // Swipe right - previous slide
+            currentSlide--;
+          }
+        }
+        
+        setPositionByIndex();
+        startAutoSlide(); // Khởi động lại auto slide sau khi user tương tác
+      }
+
+      // Animation
+      function animation() {
+        setSliderPosition();
+        if (isDragging) requestAnimationFrame(animation);
+      }
+
+      // Set slider position
+      function setSliderPosition() {
+        track.style.transform = 'translateX(' + currentTranslate + 'px)';
+      }
+
+      // Get position X
+      function getPositionX(event) {
+        return event.type.includes('mouse') ? event.pageX : event.touches[0].clientX;
+      }
+
+      // Set position by index
+      function setPositionByIndex() {
+        currentTranslate = -currentSlide * slideWidth;
+        prevTranslate = currentTranslate;
+        setSliderPosition();
+        updateSlider();
+        
+        // Handle infinite loop transition
+        setTimeout(function() {
+          if (currentSlide === 0) {
+            // If we're at the cloned last slide, jump to the real last slide
+            currentSlide = slides.length - 2;
+            currentTranslate = -currentSlide * slideWidth;
+            prevTranslate = currentTranslate;
+            track.style.transition = 'none';
+            setSliderPosition();
+            setTimeout(function() {
+              track.style.transition = 'transform 0.3s ease-in-out';
+            }, 10);
+          } else if (currentSlide === slides.length - 1) {
+            // If we're at the cloned first slide, jump to the real first slide
+            currentSlide = 1;
+            currentTranslate = -currentSlide * slideWidth;
+            prevTranslate = currentTranslate;
+            track.style.transition = 'none';
+            setSliderPosition();
+            setTimeout(function() {
+              track.style.transition = 'transform 0.3s ease-in-out';
+            }, 10);
+          }
+        }, 300);
+      }
+
+      // Go to specific slide
+      function goToSlide(index) {
+        currentSlide = index + 1; // +1 because we have a cloned slide at the beginning
+        setPositionByIndex();
+      }
+
+      // Next slide with infinite loop
+      function nextSlide() {
+        currentSlide++;
+        setPositionByIndex();
+      }
+
+      // Previous slide with infinite loop
+      function prevSlide() {
+        currentSlide--;
+        setPositionByIndex();
+      }
+
+      // Auto slide functions
+      function startAutoSlide() {
+        if (autoSlideInterval) {
+          clearInterval(autoSlideInterval);
+        }
+        autoSlideInterval = setInterval(function() {
+          currentSlide++;
+          setPositionByIndex();
+        }, autoSlideDelay);
+      }
+
+      function stopAutoSlide() {
+        if (autoSlideInterval) {
+          clearInterval(autoSlideInterval);
+          autoSlideInterval = null;
+        }
+      }
+
+      // Initialize
+      initSliderInstance();
+    },
+
+
     scrollAbout: function scrollAbout() {
       var that = this;
       if ($('#about').length == 0) {

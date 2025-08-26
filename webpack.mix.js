@@ -18,4 +18,7 @@ mix.js('resources/js/app.js', 'public/js')
     ])
     .postCss('resources/css/style.css', 'public/css', [
         //
+    ])
+    .postCss('resources/css/mobile.css', 'public/css', [
+        //
     ]).version()

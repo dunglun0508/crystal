@@ -30,6 +30,7 @@
         <link href="{{asset('template/css/style.css')}}" rel="stylesheet">
         <link href="{{mix('css/style.css')}}" rel="stylesheet">
         <link href="{{mix('css/app.css')}}" rel="stylesheet">
+        <link href="{{mix('css/mobile.css')}}" rel="stylesheet">
     </head>
 
     <body>
@@ -74,10 +75,10 @@
                         </a>
                         <div class="collapse navbar-collapse  py-3 show" id="navbarCollapse">
                             <div class="navbar-nav mx-auto border-top">
-                                <a href="index.html" class="nav-item nav-link active">Home</a>
-                                <a href="service.html" class="nav-item nav-link">Our Services</a>
-                                <a href="price.html" class="nav-item nav-link">Blog & News</a>
-                                <a href="about.html" class="nav-item nav-link">About us</a>
+                                <a href="/" class="nav-item nav-link active">Home</a>
+                                <a href="/list-service" class="nav-item nav-link">Our Services</a>
+                                <a href="/blogs-news" class="nav-item nav-link">Blog & News</a>
+                                <a href="/about-us" class="nav-item nav-link">About us</a>
                                 <div class="nav-item dropdown">
                                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                                         <img src="{{asset('img/uk-flag.png')}}" alt="">
@@ -125,13 +126,13 @@
                         </button>
                       </div>
                       <div class="offcanvas-body d-flex flex-column">
-                        <a href="index.html" class="sidebar-link">Home</a>
+                        <a href="/" class="sidebar-link">Home</a>
                         <hr>
-                        <a href="service.html" class="sidebar-link">Our Services</a>
+                        <a href="/list-service" class="sidebar-link">Our Services</a>
                         <hr>
-                        <a href="price.html" class="sidebar-link">Blog & News</a>
+                        <a href="/blogs-news" class="sidebar-link">Blog & News</a>
                         <hr>
-                        <a href="about.html" class="sidebar-link">About us</a>
+                        <a href="/about-us" class="sidebar-link">About us</a>
                         <hr>
                         <div class="nav-item nav-item-mobile dropdown">
                             <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
@@ -164,7 +165,7 @@
         <div class="container-fluid container-breadcrumb">
             <div class="container d-flex" >
                 <div class="title-breadcrumb">{{$titlePage}}</div>
-                <div class="breadcrumb-list d-flex">
+                <div class="breadcrumb-list d-none d-xxl-flex">
                     <img src="{{asset('img/home.svg')}}" alt=""> 
                     <ol class="breadcrumb justify-content-center mb-0">
                         @foreach($breadcrumb as $item => $url)
@@ -186,8 +187,8 @@
 
 
         <!-- Footer Start -->
-        <div class="container-fluid footer py-5">
-            <div class="container py-5">
+        <div class="container-fluid footer py-5 px-md-2">
+            <div class="container py-5 px-md-2">
                 <div class="row g-5">
                     <div class="col-md-6 col-lg-6 col-xl-4">
                         <div class="footer-item text-center">

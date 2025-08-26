@@ -1,12 +1,12 @@
 @extends('layouts.app')
 @section('content')
-    <div class="container-fluid py-5 row">
-        <div class="blogs-detail py-4 col-8 mx-auto">
-            <h4 class="blogs-detail-title mb-4">
+    <div class="container-fluid py-5 px-md-2" id="blog-detail">
+        <div class="blogs-detail py-4 px-md-0 py-md-0 col-xxl-8 col-12 mx-auto">
+            <h4 class="blogs-detail-title mb-4 col-xxl-12 col-11 mx-auto">
                 Important Announcement: Upcoming Price Change applied from August 1st, 2023
             </h4>
             <img src="{{ asset('img/service/service-1.png') }}" class="blogs-detail-image mb-4">
-            <div class="blogs-detail-content d-flex flex-column gap-3">
+            <div class="blogs-detail-content d-flex flex-column gap-3 col-xxl-12 col-11 mx-auto">
                 <p>After careful consideration, we have made the decision to adjust our pricing to ensure that we continue
                     delivering the exceptional services and experiences you have come to expect from us. This adjustment
                     will take effect on August 1st, 2023 and it is necessary to account for rising operational costs and to
@@ -43,7 +43,7 @@
             </div>
             <hr>
         </div>
-        <div class="container-service mt-4 col-8 mx-auto mb-4">
+        <div class="container-service mt-4 col-xxl-8 col-10 mx-auto mb-4" id="blog-list">
             <div class="mb-4">
                 <span class="other-service-title"><img src="{{ asset('img/service/title-left.svg') }}"
                     class="icon-title icon-title-left" alt="">Recent Posts<img></span>
@@ -51,7 +51,7 @@
             </div>
             <div class="row align-items-center">
                 <div class="row g-4 align-items-center">
-                    <div class="col-6">
+                    <div class="col-xxl-6 col-12">
                         <div class="blog-item">
                             <div class="blog-img" style="background-image:url({{ asset('img/blog-1.png') }})"></div>
                             <div class="blog-content">
@@ -60,11 +60,11 @@
                                     Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an
                                     unknown printer took a galley of type and scrambled it to make a type specimen book.
                                 </div>
-                                <a href="#" class="view-more">View more <img src="{{ asset('img/arrow-right.svg') }}" alt=""></a>
+                                <a href="#" class="view-more d-xxl-block d-none">View more <img src="{{ asset('img/arrow-right.svg') }}" alt=""></a>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-xxl-6 col-12">
                         <div class="blog-item">
                             <div class="blog-img" style="background-image:url({{ asset('img/blog-2.jpg') }})"></div>
                             <div class="blog-content">
@@ -74,7 +74,7 @@
                                     Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an
                                     unknown printer took a galley of type and scrambled it to make a type specimen book.
                                 </div>
-                                <a href="#" class="view-more">View more <img src="{{ asset('img/arrow-right.svg') }}" alt=""></a>
+                                <a href="#" class="view-more d-xxl-block d-none">View more <img src="{{ asset('img/arrow-right.svg') }}" alt=""></a>
                             </div>
     
                         </div>

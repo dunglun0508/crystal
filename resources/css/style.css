@@ -29,7 +29,6 @@
     line-height: 24px;
     text-align: center;
     vertical-align: middle;
-    margin-right: 10px;
 }
 
 .navbar .navbar-nav .nav-link.active,
@@ -748,7 +747,6 @@
 .content-title-service .icon-title {
     position: absolute;
     top: 13px;
-
 }
 
 .content-title-service .icon-title-left {
@@ -1244,6 +1242,7 @@
 .booking-container .quantity-control span{
     min-width: 50px;
     width: auto;
+    text-align: right;
 }
 .booking-container .quantity-control .btn-quantity {
     width: 24px;
